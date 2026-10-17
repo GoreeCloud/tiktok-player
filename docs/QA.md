@@ -1,31 +1,24 @@
-# Android validation checklist
+# Native direct-download acceptance
 
-## Automated
+**Workstream:** GoreeCloud Clips / tiktok-player.
 
-- `./gradlew :app:testDebugUnitTest` — URL host validation, provider validation, filename sanitization.
-- `./gradlew :app:lintDebug` — Android lint.
-- `./gradlew :app:assembleDebug` — debug APK assembly.
-- GitHub Actions runs all three; see workflow logs for actual results.
+## Automated checks
+- `./gradlew :app:testDebugUnitTest`
+- `./gradlew :app:lintDebug`
+- `./gradlew :app:assembleDebug`
+- Check the exact commit SHA and successful artifact upload.
 
-## Manual on-device — required before any stable release
+## Real-device checks
+- [ ] Launch light UI, verify readable status and navigation bars.
+- [ ] Browse and play an accessible TikTok video.
+- [ ] Tap Download on a video: copyright confirmation appears immediately, with no provider setup.
+- [ ] Download an owner-controlled video using the bundled on-device engine.
+- [ ] Verify playable file in Movies/GoreeCloud Clips on Android 10+.
+- [ ] Confirm download from a saved-video entry and a pasted short share link.
+- [ ] Verify media content is a real video, not an error document.
+- [ ] Verify failed/unavailable content leaves no partial files in the public library.
+- [ ] Verify optional provider fallback requires separate explicit consent.
+- [ ] Test invalid URLs, repeated taps, offline mode, storage failure and app restart.
+- [ ] Confirm Android 8–9 behavior and native library compatibility for supported ABIs.
 
-1. Confirm empty first-run library, light theme, contrast and system bars.
-2. Open TikTok in WebView; test browser Back, home, orientation and exit.
-3. Verify login (if the website supports it), video playback and audio.
-4. Share a TikTok link to the app; open it and save to the library.
-5. Remove a saved link; confirm it disappears after app restart.
-6. Toggle dark mode and check system status/navigation bar legibility.
-7. Enter malformed / http / loopback provider URL and ensure rejection.
-8. Test without configured provider and verify Settings prompt.
-9. Test authorized known-good downloadable content against an operator-approved Cobalt API endpoint; confirm rights warning, notification and playable output.
-10. Test 401, 403, 429, timeout, unsupported picker/remux response and network loss; verify no false success.
-11. Verify site-originated direct downloads always show the copyright warning.
-12. Verify that the app does not send browser session cookies to a provider and does not strip creator attribution.
-
-## Known limitations
-
-- Actual downloads require a compatible authorized provider that returns HTTPS tunnel/redirect URLs.
-- No Cobalt API key, picker/slideshow, remux pipeline or background retries.
-- The wrapper does not know whether a creator enabled downloads; the user must respect creator rights.
-- TikTok WebView authentication/playback may break when the website changes.
-- UI has not been validated for tablets, accessibility services or localization yet.
+**Unverified:** live TikTok extractor success, app installation and playback. CI alone is insufficient to mark the app stable.
