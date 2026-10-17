@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="GoreeContextMenuWindowAnimation">
+        <item name="android:windowEnterAnimation">@anim/goree_context_enter</item>
+        <item name="android:windowExitAnimation">@anim/goree_context_exit</item>
+    </style>
+</resources>

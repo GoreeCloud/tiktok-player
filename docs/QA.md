@@ -19,6 +19,14 @@ GitHub runner debug signing keys can change between runs; do not uninstall the
 existing owner app or claim an in-place upgrade has passed. Release signing
 continuity requires its own validated process.
 
+## Compact centered menu (0.8.1-dev)
+
+- [ ] Long-press video: menu opens in the center, never anchored to the bottom.
+- [ ] Dialog maximum width 365dp with 20dp minimum side margins; height at most 480dp or 60% of the screen.
+- [ ] Enter: 210ms fade/scale (0.95 to 1.0); exit: 150ms fade/scale (1.0 to 0.97), including Back and outside taps.
+- [ ] All twelve actions remain scrollable; rows at least 52dp tall.
+- [ ] Verify accessibility, focus, theme contrast, small screens and rotation.
+
 ## Gesture-only navigation (0.8.0-dev)
 
 - [ ] Confirm WebView is the **only** Explore content child, fills the system-bar-safe bounds, and has no GoreeCloud navigation bar, floating button, header, dock, glyph or overlay before interaction.

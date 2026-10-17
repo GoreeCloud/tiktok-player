@@ -398,22 +398,13 @@ public final class MainActivity extends Activity {
         contextSheet = sheet;
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(20), dp(10), dp(20), dp(24));
-        content.setBackground(rounded(surface, border, 26));
-        content.setMinimumWidth(dp(280));
-
-        View handle = new View(this);
-        handle.setBackground(rounded(secondary, secondary, 3));
-        LinearLayout.LayoutParams handleLayout = new LinearLayout.LayoutParams(dp(34), dp(4));
-        handleLayout.gravity = Gravity.CENTER_HORIZONTAL;
-        handleLayout.bottomMargin = dp(15);
-        content.addView(handle, handleLayout);
-
-        TextView heading = text("GoreeCloud Clips", 21, foreground, true);
+        content.setPadding(dp(16), dp(14), dp(16), dp(16));
+        content.setBackgroundColor(surface);
+        TextView heading = text("GoreeCloud Clips", 18, foreground, true);
         content.addView(heading);
         TextView hint = text("Video and app tools", 13, secondary, false);
         content.addView(hint);
-        gap(content, 14);
+        gap(content, 8);
 
         addSheetSection(content, "YOUR SPACE");
         addSheetItem(content, "Saved library", "Bookmarked videos and favorites", this::renderSaved);
@@ -421,7 +412,7 @@ public final class MainActivity extends Activity {
         addSheetItem(content, "Downloads", "View downloaded and queued files", this::openDownloads);
         addSheetItem(content, "Settings", "Appearance, privacy and playback", this::renderSettings);
 
-        gap(content, 12);
+        gap(content, 7);
         addSheetSection(content, "THIS VIDEO");
         addSheetItem(content, "Save video", "Add this page to your library", this::saveCurrent);
         addSheetItem(content, "Download video", "Permissions confirmation required",
@@ -429,7 +420,7 @@ public final class MainActivity extends Activity {
         addSheetItem(content, "Share link", "Send to another app", this::shareCurrent);
         addSheetItem(content, "Copy link", "Copy the current page URL", this::copyCurrent);
 
-        gap(content, 12);
+        gap(content, 7);
         addSheetSection(content, "BROWSING");
         addSheetItem(content, "Home", "Return to TikTok", () -> {
             browser.loadUrl(HOME);
@@ -445,42 +436,42 @@ public final class MainActivity extends Activity {
         });
         addSheetItem(content, "Refresh", "Reload the current page", browser::reload);
 
+        // A centered, compact card with a bounded scrollable list.
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(false);
         scroll.setVerticalScrollBarEnabled(false);
         scroll.addView(content);
-        scroll.setBackgroundColor(Color.TRANSPARENT);
+        scroll.setBackground(rounded(surface, border, 22));
+        scroll.setClipToOutline(true);
         scroll.setContentDescription("GoreeCloud video context menu");
-        int maxHeight = (int) (getResources().getDisplayMetrics().heightPixels * 0.76f);
-        scroll.setLayoutParams(new ViewGroup.LayoutParams(-1, -2));
+        int menuHeight = Math.min(dp(480),
+                Math.round(getResources().getDisplayMetrics().heightPixels * 0.60f));
+        int menuWidth = Math.min(dp(365),
+                getResources().getDisplayMetrics().widthPixels - dp(40));
+        scroll.setLayoutParams(new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, menuHeight));
         sheet.setContentView(scroll);
         Window window = sheet.getWindow();
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
             window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            window.setDimAmount(0.38f);
-            window.setGravity(Gravity.BOTTOM);
-            window.setLayout(-1, -2);
+            window.setDimAmount(0.42f);
+            window.setGravity(Gravity.CENTER);
+            window.setWindowAnimations(R.style.GoreeContextMenuWindowAnimation);
         }
-        // Cap the scroll surface, while keeping small screens fully scrollable.
-        scroll.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
-            if (scroll.getHeight() > maxHeight)
-                scroll.getLayoutParams().height = maxHeight;
-            else return;
-            scroll.requestLayout();
-        });
+        sheet.setCanceledOnTouchOutside(true);
         sheet.setOnDismissListener(dialog -> {
             if (contextSheet == sheet) contextSheet = null;
         });
         sheet.show();
         if (sheet.getWindow() != null)
-            sheet.getWindow().setLayout(-1, -2);
+            sheet.getWindow().setLayout(menuWidth, WindowManager.LayoutParams.WRAP_CONTENT);
     }
 
     private void addSheetSection(LinearLayout content, String title) {
         TextView heading = text(title, 11, secondary, true);
         heading.setLetterSpacing(0.12f);
-        heading.setPadding(dp(12), dp(8), dp(12), dp(7));
+        heading.setPadding(dp(12), dp(6), dp(12), dp(5));
         content.addView(heading);
     }
 
@@ -489,15 +480,15 @@ public final class MainActivity extends Activity {
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.VERTICAL);
         item.setGravity(Gravity.CENTER_VERTICAL);
-        item.setPadding(dp(15), dp(8), dp(15), dp(8));
-        item.setMinimumHeight(dp(59));
+        item.setPadding(dp(13), dp(7), dp(13), dp(7));
+        item.setMinimumHeight(dp(52));
         item.setBackground(rounded(dark ? Color.parseColor("#252D3E") :
                 Color.parseColor("#F5F7FB"), surface, 13));
         item.setContentDescription(title + ". " + summary);
         item.setFocusable(true);
         item.setClickable(true);
         TextView name = text(title, 15, foreground, true);
-        TextView description = text(summary, 12, secondary, false);
+        TextView description = text(summary, 11, secondary, false);
         item.addView(name);
         item.addView(description);
         item.setOnClickListener(view -> {
@@ -505,7 +496,7 @@ public final class MainActivity extends Activity {
             callback.run();
         });
         container.addView(item, new LinearLayout.LayoutParams(-1, -2));
-        gap(container, 5);
+        gap(container, 4);
     }
 
     private void openDownloads() {
