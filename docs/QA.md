@@ -22,10 +22,20 @@ continuity requires its own validated process.
 ## Video-first Explore layout checks
 
 - [ ] Compare WebView viewport bounds with previous release on 1080×2400 phone; verify video begins directly below the status bar, not below an app title or URL strip.
-- [ ] Check Explore, Saved, Settings, and More glyphs; More overlays Home, Save, Download and Share without shrinking or reloading the WebView.
+- [ ] Check Explore, Saved, Recent, Settings and the bottom-left floating glyph; the popup overlays all eight video tools without shrinking or reloading WebView.
 - [ ] Test actions and verify overlay closes after use; Back dismisses it before navigating the site.
 - [ ] Confirm return from Saved/Settings restores expanded video and initially hides actions.
 - [ ] Verify at least 48 dp touch targets and spoken labels in light and dark mode.
+
+## Floating tools and clean browsing checks
+
+- [ ] Floating three-dot action appears at the bottom-left above navigation and is 56dp with TalkBack label and modern outline glyph.
+- [ ] The two-row context panel opens upward and stays within system bar bounds; Android Back and action taps close it.
+- [ ] Video WebView remains at the same size and is not reloaded when panel expands/collapses; existing Saved, Recent and Settings navigation works.
+- [ ] Network layer blocks known third-party ad subresource domains but never TikTok video/CDN or top-level navigation.
+- [ ] Document-level TikTok Lite popup and ad-slot rules handle page mutations, not only initial navigation.
+- [ ] Verify real TikTok page against known Lite modal and sponsored content; do not label the blocker complete for unknown future site changes.
+- [ ] Verify the rule does not hide legitimate TikTok video cards, block media playback or create a reload loop.
 
 ## Feature expansion checks
 
