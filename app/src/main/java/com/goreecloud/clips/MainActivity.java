@@ -78,6 +78,7 @@ public class MainActivity extends Activity {
     private float pressStartX, pressStartY;
     private boolean longPressActivated;
     private int activeProfileSlot;
+    private static boolean webViewSuffixConfigured;
     private String cleanWebScript = "";
     private boolean dark;
     private int background, surface, foreground, secondary, border, accent;
@@ -87,9 +88,17 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         activeProfileSlot = profileSlot();
-        // Must be called before ANY WebView initialization in this process.
-        if (activeProfileSlot > 0 && Build.VERSION.SDK_INT >= 28)
-            WebView.setDataDirectorySuffix("goreecloud_clips_profile_" + activeProfileSlot);
+        // Configure only once per process. A returning Activity in the same
+        // profile process must not call this after WebView has initialized.
+        if (activeProfileSlot > 0 && Build.VERSION.SDK_INT >= 28) {
+            synchronized (MainActivity.class) {
+                if (!webViewSuffixConfigured) {
+                    WebView.setDataDirectorySuffix("goreecloud_clips_profile_" +
+                            activeProfileSlot);
+                    webViewSuffixConfigured = true;
+                }
+            }
+        }
         super.onCreate(state);
         if (activeProfileSlot > 0 && (Build.VERSION.SDK_INT < 28 ||
                 !ProfileRegistry.exists(this, activeProfileSlot))) {
