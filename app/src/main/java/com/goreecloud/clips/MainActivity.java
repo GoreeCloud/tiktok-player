@@ -354,6 +354,28 @@ public class MainActivity extends Activity {
                 return NavigationPolicy.classify(url, request.isForMainFrame())
                         == NavigationPolicy.Action.BLOCK;
             }
+            @Override public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                activeMainFrameUrl = url;
+                if (profileRecoveryDialog != null) {
+                    profileRecoveryDialog.dismiss();
+                    profileRecoveryDialog = null;
+                }
+                super.onPageStarted(view, url, favicon);
+            }
+            @Override public void onReceivedError(WebView view, WebResourceRequest request,
+                    WebResourceError error) {
+                if (!request.isForMainFrame()) return;
+                String path = request.getUrl().getPath();
+                if (!MediaUrls.isTikTok(request.getUrl().toString()) || path == null ||
+                        !(path.equals("/profile") || path.startsWith("/profile/"))) return;
+                String failedUrl = request.getUrl().toString();
+                view.post(() -> {
+                    if (browser != view || isFinishing() || isDestroyed()) return;
+                    if (!"browse".equals(currentTab) ||
+                            !failedUrl.equals(activeMainFrameUrl)) return;
+                    showProfileRecovery(failedUrl);
+                });
+            }
             @Override public void onPageFinished(WebView view, String url) {
                 if (settings.getBoolean("history_enabled", true) && MediaUrls.isVideoLink(url))
                     recent.record(view.getTitle(), url);
