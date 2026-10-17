@@ -8,8 +8,8 @@ android {
         applicationId 'com.goreecloud.clips'
         minSdk 26
         targetSdk 35
-        versionCode 2
-        versionName '0.2.0-dev'
+        versionCode 3
+        versionName '0.3.0-dev'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     packaging {
@@ -18,6 +18,11 @@ android {
         }
     }
     buildTypes {
+        debug {
+            // GitHub-hosted runners use ephemeral debug signing keys. Keep test installs
+            // separate from the owner's existing app to avoid destructive uninstall.
+            applicationIdSuffix '.dev'
+        }
         release {
             minifyEnabled false
         }
