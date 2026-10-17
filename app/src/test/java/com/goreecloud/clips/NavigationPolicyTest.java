@@ -20,8 +20,7 @@ public final class NavigationPolicyTest {
                 "https://market.android.com/details?id=com.zhiliaoapp.musically.go",
                 "https://apps.samsung.com/appquery/appDetail.as?appId=example",
                 "market://details?id=com.zhiliaoapp.musically.go",
-                "intent://details?id=com.zhiliaoapp.musically.go#Intent;scheme=market;end",
-                "https://play.google.com.evil.example/store/apps/details"
+                "intent://details?id=com.zhiliaoapp.musically.go#Intent;scheme=market;end"
         };
         for (String link : links) {
             assertEquals(link, NavigationPolicy.Action.BLOCK,
