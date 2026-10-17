@@ -390,42 +390,45 @@ public class MainActivity extends Activity {
 
     private void installLongPressGesture() {
         final int slop = ViewConfiguration.get(this).getScaledTouchSlop();
-        final int timeout = ViewConfiguration.getLongPressTimeout();
+        final int timeout = Math.max(ViewConfiguration.getLongPressTimeout(), 650);
         browser.setOnTouchListener((view, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
+                    // One finger belongs to WebView text selection and editing.
                     cancelLongPress();
-                    longPressActivated = false;
-                    pressStartX = event.getX();
-                    pressStartY = event.getY();
+                    break;
+                case MotionEvent.ACTION_POINTER_DOWN:
+                    cancelLongPress();
+                    if (event.getPointerCount() != 2) break;
+                    pressStartX = event.getX(0);
+                    pressStartY = event.getY(0);
+                    secondPressStartX = event.getX(1);
+                    secondPressStartY = event.getY(1);
                     pendingLongPress = () -> {
                         pendingLongPress = null;
-                        longPressActivated = true;
                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
                         showContextSheet();
                     };
                     main.postDelayed(pendingLongPress, timeout);
                     break;
                 case MotionEvent.ACTION_MOVE:
-                    if (Math.abs(event.getX() - pressStartX) > slop ||
-                            Math.abs(event.getY() - pressStartY) > slop) cancelLongPress();
+                    if (pendingLongPress != null &&
+                            (event.getPointerCount() != 2 ||
+                            Math.abs(event.getX(0) - pressStartX) > slop ||
+                            Math.abs(event.getY(0) - pressStartY) > slop ||
+                            Math.abs(event.getX(1) - secondPressStartX) > slop ||
+                            Math.abs(event.getY(1) - secondPressStartY) > slop))
+                        cancelLongPress();
                     break;
-                case MotionEvent.ACTION_POINTER_DOWN:
+                case MotionEvent.ACTION_POINTER_UP:
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
                     cancelLongPress();
                     break;
                 default: break;
             }
-            // Normal taps, swipes, scrolling and media playback stay in WebView.
+            // Never consume a WebView text selection, paste or drag event.
             return false;
-        });
-        // Consume WebView's native text/URL selection long-click so the app
-        // context sheet, rather than a second system popup, is presented.
-        browser.setOnLongClickListener(view -> {
-            if (!longPressActivated) showContextSheet();
-            cancelLongPress();
-            return true;
         });
     }
 
