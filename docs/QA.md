@@ -16,6 +16,14 @@ GitHub runner debug signing keys can change between runs; do not uninstall the
 existing owner app or claim an in-place upgrade has passed. Release signing
 continuity requires its own validated process.
 
+## Video-first Explore layout checks
+
+- [ ] Compare WebView viewport bounds with previous release on 1080×2400 phone; verify video begins directly below the status bar, not below an app title or URL strip.
+- [ ] Check Explore, Saved, Settings, and More glyphs; More overlays Home, Save, Download and Share without shrinking or reloading the WebView.
+- [ ] Test actions and verify overlay closes after use; Back dismisses it before navigating the site.
+- [ ] Confirm return from Saved/Settings restores expanded video and initially hides actions.
+- [ ] Verify at least 48 dp touch targets and spoken labels in light and dark mode.
+
 ## Real-device checks
 - [ ] Launch light UI on Android 15/16; title and top controls begin below the status-bar icons/camera cutout, with no overlap.
 - [ ] Verify dark mode and the status/navigation icon contrast on both themes.

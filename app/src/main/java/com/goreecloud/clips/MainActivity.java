@@ -23,6 +23,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
+import android.widget.FrameLayout;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebChromeClient;
@@ -54,6 +55,8 @@ public final class MainActivity extends Activity {
     private WebView browser;
     private LinearLayout shell;
     private String currentTab = "browse";
+    private LinearLayout browseTools;
+    private boolean browseToolsOpen = false;
     private boolean dark;
     private int background, surface, foreground, secondary, border, accent;
 
@@ -112,6 +115,7 @@ public final class MainActivity extends Activity {
 
     @Override public void onBackPressed() {
         if (!"browse".equals(currentTab)) { renderBrowse(); return; }
+        if (browseToolsOpen) { toggleBrowseTools(); return; }
         if (browser.canGoBack()) { browser.goBack(); return; }
         super.onBackPressed();
     }
@@ -231,11 +235,23 @@ public final class MainActivity extends Activity {
 
     private void addBottom() {
         LinearLayout bottom = row();
-        bottom.setPadding(dp(12), dp(9), dp(12), dp(13));
+        bottom.setPadding(dp(12), dp(4), dp(12), dp(6));
         bottom.setBackgroundColor(surface);
         addTab(bottom, "Explore", IconButtonView.EXPLORE, "browse", this::renderBrowse);
         addTab(bottom, "Saved", IconButtonView.LIBRARY, "saved", this::renderSaved);
         addTab(bottom, "Settings", IconButtonView.SETTINGS, "settings", this::renderSettings);
+        if ("browse".equals(currentTab)) {
+            boolean expanded = browseToolsOpen;
+            int icon = expanded ? IconButtonView.CLOSE : IconButtonView.MORE;
+            String description = expanded ? "Hide video actions" : "Show video actions";
+            IconButtonView menu = new IconButtonView(this, icon, description,
+                    expanded ? accent : secondary, surface, surface,
+                    dark ? Color.parseColor("#2A365C") : Color.parseColor("#E7EEFF"),
+                    expanded, this::toggleBrowseTools);
+            LinearLayout.LayoutParams position = new LinearLayout.LayoutParams(0, dp(48), 1);
+            position.setMargins(dp(4), 0, dp(4), 0);
+            bottom.addView(menu, position);
+        }
         shell.addView(bottom);
     }
 
@@ -272,13 +288,6 @@ public final class MainActivity extends Activity {
                     openExternal(url);
                 return true;
             }
-            @Override public void onPageFinished(WebView view, String url) {
-                if ("browse".equals(currentTab)) {
-                    // Refresh the current page indicator without recreating the WebView.
-                    TextView indicator = shell.findViewWithTag("current_link");
-                    if (indicator != null) indicator.setText(url == null ? "" : url);
-                }
-            }
         });
         browser.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
             if (!MediaUrls.isDownloadUrl(url)) {
@@ -291,23 +300,47 @@ public final class MainActivity extends Activity {
 
     private void renderBrowse() {
         currentTab = "browse";
-        reset("TikTok browsing • native library and download tools");
-        LinearLayout controls = row();
-        controls.setPadding(dp(12), dp(6), dp(12), dp(10));
-        addControl(controls, "Home", IconButtonView.HOME, () -> browser.loadUrl(HOME));
-        addControl(controls, "Save", IconButtonView.BOOKMARK, this::saveCurrent);
-        addControl(controls, "Download", IconButtonView.DOWNLOAD, () -> startOrPrompt(browser.getUrl()));
-        addControl(controls, "Share", IconButtonView.SHARE, this::shareCurrent);
-        shell.addView(controls);
-        TextView indicator = text(browser.getUrl() == null ? HOME : browser.getUrl(), 11, secondary, false);
-        indicator.setTag("current_link");
-        indicator.setMaxLines(1);
-        indicator.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        indicator.setPadding(dp(17), 0, dp(17), dp(7));
-        shell.addView(indicator);
-        ViewGroup parent = (ViewGroup) browser.getParent();
-        if (parent != null) parent.removeView(browser);
-        shell.addView(browser, new LinearLayout.LayoutParams(-1, 0, 1));
+        browseToolsOpen = false;
+        // Video-first layout: the player begins directly under Android's safe
+        // system-bar inset. The permanent title, URL and toolbar are removed.
+        shell.removeAllViews();
+        shell.setBackgroundColor(background);
+        FrameLayout videoArea = new FrameLayout(this);
+        ViewGroup oldParent = (ViewGroup) browser.getParent();
+        if (oldParent != null) oldParent.removeView(browser);
+        videoArea.addView(browser, new FrameLayout.LayoutParams(-1, -1));
+
+        browseTools = row();
+        browseTools.setPadding(dp(8), dp(8), dp(8), dp(8));
+        browseTools.setBackground(rounded(surface, border, 16));
+        addControl(browseTools, "Home", IconButtonView.HOME,
+                () -> { closeBrowseTools(); browser.loadUrl(HOME); });
+        addControl(browseTools, "Save", IconButtonView.BOOKMARK,
+                () -> { closeBrowseTools(); saveCurrent(); });
+        addControl(browseTools, "Download", IconButtonView.DOWNLOAD,
+                () -> { closeBrowseTools(); startOrPrompt(browser.getUrl()); });
+        addControl(browseTools, "Share", IconButtonView.SHARE,
+                () -> { closeBrowseTools(); shareCurrent(); });
+        FrameLayout.LayoutParams floating = new FrameLayout.LayoutParams(
+                -1, -2, Gravity.BOTTOM);
+        floating.setMargins(dp(10), 0, dp(10), dp(8));
+        videoArea.addView(browseTools, floating);
+        browseTools.setVisibility(View.GONE);
+        shell.addView(videoArea, new LinearLayout.LayoutParams(-1, 0, 1));
+        addBottom();
+    }
+
+    private void closeBrowseTools() {
+        if (browseToolsOpen) toggleBrowseTools();
+    }
+
+    private void toggleBrowseTools() {
+        if (!"browse".equals(currentTab) || browseTools == null) return;
+        browseToolsOpen = !browseToolsOpen;
+        browseTools.setVisibility(browseToolsOpen ? View.VISIBLE : View.GONE);
+        // Refresh only the navigation bar; preserve the live WebView and video.
+        View last = shell.getChildAt(shell.getChildCount() - 1);
+        if (last != null) shell.removeView(last);
         addBottom();
     }
 
