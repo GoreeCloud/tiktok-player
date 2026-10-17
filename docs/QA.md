@@ -19,50 +19,33 @@ GitHub runner debug signing keys can change between runs; do not uninstall the
 existing owner app or claim an in-place upgrade has passed. Release signing
 continuity requires its own validated process.
 
-## Video-first Explore layout checks
+## Gesture-only navigation (0.8.0-dev)
 
-- [ ] Compare WebView viewport bounds with previous release on 1080×2400 phone; verify video begins directly below the status bar, not below an app title or URL strip.
-- [ ] Check Explore, Saved, Recent, Settings and the bottom-left floating glyph; the popup overlays all eight video tools without shrinking or reloading WebView.
-- [ ] Test actions and verify overlay closes after use; Back dismisses it before navigating the site.
-- [ ] Confirm return from Saved/Settings restores expanded video and initially hides actions.
-- [ ] Verify at least 48 dp touch targets and spoken labels in light and dark mode.
+- [ ] Confirm WebView is the **only** Explore content child, fills the system-bar-safe bounds, and has no GoreeCloud navigation bar, floating button, header, dock, glyph or overlay before interaction.
+- [ ] Press and hold on TikTok WebView for ~500ms without moving; a native text-first context sheet appears with clear grouped actions.
+- [ ] Verify every requested action: Saved library, Recent history, Android Downloads, Settings, Save video, Download video, Share link, Copy link, Home, Back, Forward and Refresh.
+- [ ] Swipe/scroll/tap TikTok normally without triggering the menu; moving beyond touch slop cancels pending long-press; multi-touch cancels.
+- [ ] Android Back dismisses menu; tapping a menu action dismisses it and performs the action; no duplicate browser text-selection popup.
+- [ ] Secondary screens have no bottom navigation. Android Back returns to video; a long press on the header opens the context sheet for navigating between Saved, Recent and Settings.
+- [ ] Saved and Recent use text-labeled action pills, Settings has labeled touchable rows, and Android confirmations show words instead of hand-drawn glyphs.
+- [ ] Verify the one-time gesture discovery toast does not persist over video or repeat on subsequent app launches.
+- [ ] Verify light/dark theme contrast, navigation bar insets, menu scroll bounds, screen rotation and Android keyboard interactions.
+- [ ] Verify privacy protection and direct download prompts remain unchanged from the prior release.
 
-## Refined dock and unobstructed controls checks
+## Clean browsing regression
 
-- [ ] On the OnePlus 1080x2400 screen, prove that the action button bounds begin *below* the TikTok WebView's bottom boundary, leaving TikTok's native Home control uncovered.
-- [ ] Compare the new dock's visual cohesion: one pill housing Explore, Saved, Recent and Settings, separate circular action on the left; no individually stroked tab boxes.
-- [ ] All five icon-only controls have 48dp+ targets, clear content descriptions and selected-tab state in dark/light modes.
-- [ ] Press the dock's left glyph to open the upward menu; Back closes it; opening from Saved/Recent/Settings returns to Explore and expands it.
-- [ ] Video WebView retains safe top inset and does not resize when the context menu opens.
-
-## Floating tools and clean browsing checks
-
-- [ ] Floating three-dot action appears at the bottom-left above navigation and is 56dp with TalkBack label and modern outline glyph.
-- [ ] The two-row context panel opens upward and stays within system bar bounds; Android Back and action taps close it.
-- [ ] Video WebView remains at the same size and is not reloaded when panel expands/collapses; existing Saved, Recent and Settings navigation works.
-- [ ] Network layer blocks known third-party ad subresource domains but never TikTok video/CDN or top-level navigation.
-- [ ] Document-level TikTok Lite popup and ad-slot rules handle page mutations, not only initial navigation.
-- [ ] Verify real TikTok page against known Lite modal and sponsored content; do not label the blocker complete for unknown future site changes.
-- [ ] Verify the rule does not hide legitimate TikTok video cards, block media playback or create a reload loop.
-
-## Feature expansion checks
-
-- [ ] More now shows two rows of icon-only actions: Home, Save, Download, Share and Back, Forward, Refresh, Copy Link. Confirm menu does not resize video.
-- [ ] Back/Forward respects WebView history; Refresh reloads current page; Copy Link puts current TikTok URL on clipboard.
-- [ ] Saved list search filters case-insensitively by title or URL without erasing search focus; tapping favorite moves an item to the top, and favorite persists across reopen.
-- [ ] Recent tab records only navigated TikTok video URLs, not home pages; search, reopen, save, download and remove work.
-- [ ] Recent Settings toggle stops new records; clear history does not erase Saved entries or browser cookies.
-- [ ] Keep-screen-awake preference applies immediately and persists; off is the initial default.
-- [ ] Light/dark status-bar contrast, bottom controls and original video viewport remain intact.
+- [ ] Network layer blocks known third-party ad subresources while allowing TikTok video/CDN and main-frame navigation.
+- [ ] TikTok Lite and sponsored-card DOM suppression handles SPA mutations; do not claim guarantees for future TikTok site changes.
+- [ ] Verify ads blocker does not hide normal video cards or break media playback.
 
 ## Real-device checks
-- [ ] Launch light UI on Android 15/16; title and top controls begin below the status-bar icons/camera cutout, with no overlap.
+- [ ] Launch light Explore UI on Android 15/16; TikTok content begins below the status-bar/camera cutout, with no app toolbar.
 - [ ] Verify dark mode and the status/navigation icon contrast on both themes.
-- [ ] Verify app-owned buttons use icons only across Explore, Saved, Settings, and confirm/cancel dialogs; native glyphs have TalkBack labels and tooltips.
-- [ ] Verify touch targets are at least 48 dp, show focus, and bottom navigation stays above the gesture navigation area.
-- [ ] Open keyboard while editing provider URL and confirm the action and navigation are not obscured.
+- [ ] Verify app-owned text buttons and context actions have clear spoken labels, focus and contrast.
+- [ ] Verify native context sheet actions and saved/settings text controls are at least 48dp and remain above the system gesture area.
+- [ ] Open keyboard while editing provider URL and confirm action rows and dialog remain usable.
 - [ ] Browse and play an accessible TikTok video.
-- [ ] Tap Download on a video: copyright confirmation appears immediately, with no provider setup.
+- [ ] Long-press the video and choose Download video: copyright confirmation appears when a valid link is recognized.
 - [ ] Download an owner-controlled video using the bundled on-device engine.
 - [ ] Verify playable file in Movies/GoreeCloud Clips on Android 10+.
 - [ ] Confirm download from a saved-video entry and a pasted short share link.
@@ -72,4 +55,4 @@ continuity requires its own validated process.
 - [ ] Test invalid URLs, repeated taps, offline mode, storage failure and app restart.
 - [ ] Confirm Android 8–9 behavior and native library compatibility for supported ABIs.
 
-**Unverified:** live TikTok extractor success, app installation and playback. CI alone is insufficient to mark the app stable.
+**Unverified until device evidence:** live TikTok extractor success and full media playback. CI alone is insufficient to mark the app stable.
