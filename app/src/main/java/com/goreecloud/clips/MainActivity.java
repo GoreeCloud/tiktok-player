@@ -345,12 +345,11 @@ public class MainActivity extends Activity {
                 return super.shouldInterceptRequest(view, request);
             }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                if (!request.isForMainFrame()) return false;
                 String url = request.getUrl().toString();
-                if (MediaUrls.isTikTok(url)) return false;
-                if ("https".equalsIgnoreCase(request.getUrl().getScheme()))
-                    openExternal(url);
-                return true;
+                // An Android WebView "gesture" flag can represent a feed swipe.
+                // Never trust embedded-page navigation to open an external app.
+                return NavigationPolicy.classify(url, request.isForMainFrame())
+                        == NavigationPolicy.Action.BLOCK;
             }
             @Override public void onPageFinished(WebView view, String url) {
                 if (settings.getBoolean("history_enabled", true) && MediaUrls.isVideoLink(url))
@@ -1131,7 +1130,10 @@ public class MainActivity extends Activity {
     }
 
     private void openExternal(String url) {
-        if (!MediaUrls.isDownloadUrl(url)) { toast("Blocked unsafe external link."); return; }
+        if (!MediaUrls.isDownloadUrl(url) || NavigationPolicy.isAppStoreUrl(url)) {
+            toast("Blocked unsafe external link.");
+            return;
+        }
         try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
         catch (Exception error) { toast("No browser available."); }
     }

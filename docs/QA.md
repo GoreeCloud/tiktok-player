@@ -14,6 +14,19 @@
 - [ ] On Android 8 (API 26-27) only Default is available, without falsely claiming WebView isolation.
 - [ ] All slots are fixed/non-reusable to prevent accidental exposure of older WebView data; no delete controls until safe deletion is implemented.
 
+## TikTok Lite Play Store redirect regression (pending device verification)
+
+- [ ] Swipe rapidly through multiple TikTok feed videos (including Lite promotional cards): GoreeCloud Clips remains foreground; no Play Store or TikTok Lite installer launches.
+- [ ] Tap or swipe a TikTok Lite promotion: known app-store HTTPS URLs and `market://` / `intent://` deep links cannot launch Android apps.
+- [ ] Allow normal TikTok feed navigation and video playback; native long-press context actions still work.
+- [ ] Verify background and JavaScript-triggered off-site navigation is blocked without an external-app prompt.
+- [ ] Reproduce repeated swipes over a page that attempts `snssdk1340.onelink.me` or another off-site attribution redirect: it must be blocked **without a popup** and without launching Play Store.
+- [ ] Tap an off-site link inside TikTok: no external app opens and no navigation confirmation appears. An Android WebView gesture bit is insufficient proof of an intentional link tap.
+- [ ] Check all embedded-page off-site redirects are blocked, while the explicit native Settings → Open cobalt.tools action still works.
+- [ ] Repeat in Default and additional isolated profiles on representative Android devices.
+- [ ] Confirm `NavigationPolicyTest`, `testDebugUnitTest`, lint, and APK build pass at the exact PR head.
+- [ ] Confirm update-signature compatibility before distributing an APK to replace an installed development build.
+
 ## Automated checks
 - `./gradlew :app:testDebugUnitTest`
 - `./gradlew :app:lintDebug`

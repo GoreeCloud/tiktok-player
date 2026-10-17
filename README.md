@@ -16,6 +16,7 @@ Native Android browser, saved-video organizer, and built-in direct downloader fo
 
 
 - WebView browser with TikTok navigation, sharing and local bookmarks.
+- **External-link safety:** the embedded TikTok feed never opens external websites or Android app-store links, including OneLink/TikTok Lite attribution redirects triggered during video swipes. An Android WebView gesture flag is insufficient to distinguish a swipe from an intentional link tap. External services can only be opened using explicit GoreeCloud native actions (such as Settings → Open cobalt.tools); normal video swiping stays in Clips.
 - Light theme by default, optional dark theme, and correct Android status/navigation/cutout/keyboard insets.
 - **Full-screen, gesture-driven player:** no GoreeCloud toolbar, bottom navigation, floating button, or persistent control overlay. TikTok's own controls remain unobstructed.
 - **Compact centered menu:** video long-press opens a smaller, centered, scrollable dialog with smooth scale-and-fade entry/exit; all actions remain accessible.
