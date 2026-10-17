@@ -176,6 +176,10 @@ public class MainActivity extends Activity {
             contextSheet = null;
         }
         executor.shutdownNow();
+        if (profileRecoveryDialog != null) {
+            profileRecoveryDialog.dismiss();
+            profileRecoveryDialog = null;
+        }
         if (browser != null) {
             ViewGroup parent = (ViewGroup) browser.getParent();
             if (parent != null) parent.removeView(browser);
@@ -452,6 +456,32 @@ public class MainActivity extends Activity {
             // Never consume a WebView text selection, paste or drag event.
             return false;
         });
+    }
+
+    private void showProfileRecovery(String failedUrl) {
+        if (profileRecoveryDialog != null || isFinishing() || isDestroyed() ||
+                browser == null || !"browse".equals(currentTab) ||
+                !failedUrl.equals(activeMainFrameUrl)) return;
+        AlertDialog dialog = new IconDialogBuilder()
+                .setTitle("TikTok profile couldn't load")
+                .setMessage("TikTok may have signed you in, but the profile page had a network " +
+                        "error. Retry the page or return to browsing. Your saved Clips data " +
+                        "was not changed.")
+                .setNegativeButton("Home", (unused, which) -> browser.loadUrl(HOME))
+                .setNeutralButton("Back", (unused, which) -> {
+                    if (browser.canGoBack()) browser.goBack();
+                    else browser.loadUrl(HOME);
+                })
+                .setPositiveButton("Retry", (unused, which) -> browser.loadUrl(failedUrl))
+                .create();
+        profileRecoveryDialog = dialog;
+        dialog.setOnDismissListener(unused -> {
+            if (profileRecoveryDialog == dialog) profileRecoveryDialog = null;
+        });
+        dialog.show();
+        decorateDialogButton(dialog.getButton(AlertDialog.BUTTON_NEGATIVE), false);
+        decorateDialogButton(dialog.getButton(AlertDialog.BUTTON_NEUTRAL), false);
+        decorateDialogButton(dialog.getButton(AlertDialog.BUTTON_POSITIVE), true);
     }
 
     private void showContextSheet() {
