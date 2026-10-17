@@ -27,6 +27,16 @@ continuity requires its own validated process.
 - [ ] Confirm return from Saved/Settings restores expanded video and initially hides actions.
 - [ ] Verify at least 48 dp touch targets and spoken labels in light and dark mode.
 
+## Feature expansion checks
+
+- [ ] More now shows two rows of icon-only actions: Home, Save, Download, Share and Back, Forward, Refresh, Copy Link. Confirm menu does not resize video.
+- [ ] Back/Forward respects WebView history; Refresh reloads current page; Copy Link puts current TikTok URL on clipboard.
+- [ ] Saved list search filters case-insensitively by title or URL without erasing search focus; tapping favorite moves an item to the top, and favorite persists across reopen.
+- [ ] Recent tab records only navigated TikTok video URLs, not home pages; search, reopen, save, download and remove work.
+- [ ] Recent Settings toggle stops new records; clear history does not erase Saved entries or browser cookies.
+- [ ] Keep-screen-awake preference applies immediately and persists; off is the initial default.
+- [ ] Light/dark status-bar contrast, bottom controls and original video viewport remain intact.
+
 ## Real-device checks
 - [ ] Launch light UI on Android 15/16; title and top controls begin below the status-bar icons/camera cutout, with no overlap.
 - [ ] Verify dark mode and the status/navigation icon contrast on both themes.
