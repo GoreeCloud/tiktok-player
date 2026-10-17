@@ -1,7 +1,7 @@
 name: Video Player Device QA
 on:
   push:
-    branches: [feature/video-first-layout-*, feature/library-browser-tools-*, feature/floating-menu-clean-web-*, feature/refined-dock-unobstructed-tools-*, feature/long-press-video-context-*, feature/centered-dialog, feature/clips-official-icon-context]
+    branches: [feature/video-first-layout-*, feature/library-browser-tools-*, feature/floating-menu-clean-web-*, feature/refined-dock-unobstructed-tools-*, feature/long-press-video-context-*, feature/centered-dialog, feature/clips-official-icon-context, feature/profile-isolation-v10]
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,9 +26,9 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" --install 'platforms;android-35' 'build-tools;35.0.0'
       - name: Build isolated device QA APK
-        run: ./gradlew --no-daemon -PqaSuffix=.iconqa :app:assembleDebug
+        run: ./gradlew --no-daemon -PqaSuffix=.profilesqa :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: goreecloud-clips-iconqa
+          name: goreecloud-clips-profilesqa
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error

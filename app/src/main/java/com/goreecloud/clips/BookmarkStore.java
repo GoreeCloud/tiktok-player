@@ -19,8 +19,11 @@ public final class BookmarkStore {
     }
 
     private final SharedPreferences preferences;
-    public BookmarkStore(Context context) {
-        preferences = context.getSharedPreferences("clips_library", Context.MODE_PRIVATE);
+    public BookmarkStore(Context context) { this(context, 0); }
+
+    public BookmarkStore(Context context, int slot) {
+        preferences = context.getSharedPreferences(
+                ProfileRegistry.prefName("clips_library", slot), Context.MODE_PRIVATE);
     }
 
     public List<Item> all() {

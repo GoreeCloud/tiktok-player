@@ -6,6 +6,11 @@ Native Android browser, saved-video organizer, and built-in direct downloader fo
 
 ## Working features
 
+- **Four isolated local profiles:** Default preserves all existing saved videos, history, favorites and TikTok cookies. Three additional profile slots use separate Android processes and WebView storage (Android 9+).
+- **Profile switching:** long-press a video and select Profiles, then create, rename or switch. No profile data is merged automatically.
+- **Opt-in shared library:** Save to shared makes a specific video visible to other local profiles; private favorites/history remain separate. No cloud sync.
+
+
 - **Official GoreeCloud Clips launcher identity:** native cyan-to-magenta play mark on deep navy, including adaptive, round and monochrome variants for Android 8+.
 - **Icon-and-label long-press actions:** twelve matching scalable vector icons beside titles and summaries, with 56dp accessible touch targets.
 

@@ -2,6 +2,18 @@
 
 **Workstream:** GoreeCloud Clips / tiktok-player.
 
+## Multi-profile isolation (1.0.0-dev)
+
+- [ ] Original Default library, history and browser session are intact after updating.
+- [ ] Create profile A and B; each opens in a different private WebView process, with isolated TikTok cookies, login and local settings.
+- [ ] Saving and recording in profile A must not appear in B or Default.
+- [ ] Switch profile B to Default and back; profiles preserve their own cookies and favorites.
+- [ ] Save to shared in A: entry appears in B only through Shared library, not automatically in B private Saved.
+- [ ] Rename profile persists; profile switch clears old Activity stack.
+- [ ] Cold-launch icon opens the most recently selected profile.
+- [ ] On Android 8 (API 26-27) only Default is available, without falsely claiming WebView isolation.
+- [ ] All slots are fixed/non-reusable to prevent accidental exposure of older WebView data; no delete controls until safe deletion is implemented.
+
 ## Automated checks
 - `./gradlew :app:testDebugUnitTest`
 - `./gradlew :app:lintDebug`

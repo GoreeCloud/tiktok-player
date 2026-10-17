@@ -11,8 +11,11 @@ import java.util.List;
 public final class HistoryStore {
     private static final int LIMIT = 150;
     private final SharedPreferences preferences;
-    public HistoryStore(Context context) {
-        preferences = context.getSharedPreferences("clips_recent", Context.MODE_PRIVATE);
+    public HistoryStore(Context context) { this(context, 0); }
+
+    public HistoryStore(Context context, int slot) {
+        preferences = context.getSharedPreferences(
+                ProfileRegistry.prefName("clips_recent", slot), Context.MODE_PRIVATE);
     }
 
     public List<BookmarkStore.Item> all() {
