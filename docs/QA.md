@@ -27,6 +27,15 @@
 - [ ] Confirm `NavigationPolicyTest`, `testDebugUnitTest`, lint, and APK build pass at the exact PR head.
 - [ ] Confirm update-signature compatibility before distributing an APK to replace an installed development build.
 
+## Text selection and profile recovery QA
+
+- [ ] One-finger long-press selects text; drag selection handles and copy it.
+- [ ] Long-press on an editable field opens Android Paste; preserve typing and accessibility.
+- [ ] Stationary two-finger hold opens the Clips menu; pinches and swipes do not.
+- [ ] Failed TikTok profile main-frame load offers Retry, Back and Home without clearing login sessions.
+- [ ] Subresource or unrelated page errors do not open the recovery dialog.
+- [ ] Confirm session retention, profile isolation, and TikTok Lite redirect regression on isolated gestureqa build.
+
 ## Automated checks
 - `./gradlew :app:testDebugUnitTest`
 - `./gradlew :app:lintDebug`
