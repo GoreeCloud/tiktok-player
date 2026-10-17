@@ -254,24 +254,50 @@ public final class MainActivity extends Activity {
         shell.addView(top);
     }
 
+    /**
+     * A true app-owned bottom dock. Every touch target is below the browser
+     * viewport, so the floating action can never cover TikTok's Home control.
+     * A single pill unifies the destinations instead of four separate boxes.
+     */
     private void addBottom() {
-        LinearLayout bottom = row();
-        bottom.setPadding(dp(12), dp(4), dp(12), dp(6));
-        bottom.setBackgroundColor(surface);
-        addTab(bottom, "Explore", IconButtonView.EXPLORE, "browse", this::renderBrowse);
-        addTab(bottom, "Saved", IconButtonView.LIBRARY, "saved", this::renderSaved);
-        addTab(bottom, "Recent", IconButtonView.HISTORY, "recent", this::renderRecent);
-        addTab(bottom, "Settings", IconButtonView.SETTINGS, "settings", this::renderSettings);
-        shell.addView(bottom);
+        LinearLayout dock = row();
+        dock.setPadding(dp(12), dp(5), dp(12), dp(7));
+        dock.setBackgroundColor(background);
+
+        floatingToolsButton = new IconButtonView(this, IconButtonView.MORE,
+                browseToolsOpen ? "Close video tools" : "Open video tools",
+                Color.WHITE, accent, accent, accent, browseToolsOpen,
+                this::openVideoTools);
+        floatingToolsButton.setFloatingStyle(accent, Color.WHITE);
+        LinearLayout.LayoutParams menuPosition = new LinearLayout.LayoutParams(dp(48), dp(48));
+        dock.addView(floatingToolsButton, menuPosition);
+
+        View space = new View(this);
+        dock.addView(space, new LinearLayout.LayoutParams(dp(10), dp(1)));
+
+        LinearLayout destinations = row();
+        destinations.setPadding(dp(3), 0, dp(3), 0);
+        destinations.setBackground(rounded(surface, border, 24));
+        addTab(destinations, "Explore", IconButtonView.EXPLORE, "browse", this::renderBrowse);
+        addTab(destinations, "Saved", IconButtonView.LIBRARY, "saved", this::renderSaved);
+        addTab(destinations, "Recent", IconButtonView.HISTORY, "recent", this::renderRecent);
+        addTab(destinations, "Settings", IconButtonView.SETTINGS, "settings", this::renderSettings);
+        dock.addView(destinations, new LinearLayout.LayoutParams(0, dp(48), 1));
+        shell.addView(dock);
+    }
+
+    private void openVideoTools() {
+        if (!"browse".equals(currentTab)) renderBrowse();
+        toggleBrowseTools();
     }
 
     private void addTab(LinearLayout bar, String label, int glyph, String tab, Runnable run) {
         boolean selected = currentTab.equals(tab);
-        int fill = dark ? Color.parseColor("#2A365C") : Color.parseColor("#E7EEFF");
-        IconButtonView item = new IconButtonView(this, glyph, label, selected ? accent : secondary,
-                surface, surface, fill, selected, run);
+        IconButtonView item = new IconButtonView(this, glyph, label,
+                selected ? accent : secondary, surface, surface, surface, selected, run);
+        item.setNavigationStyle(selected, accent, secondary,
+                dark ? Color.parseColor("#293754") : Color.parseColor("#EAF0FF"));
         LinearLayout.LayoutParams position = new LinearLayout.LayoutParams(0, dp(48), 1);
-        position.setMargins(dp(4), 0, dp(4), 0);
         bar.addView(item, position);
     }
 
@@ -377,18 +403,10 @@ public final class MainActivity extends Activity {
         // Expand upward from the bottom-left FAB; this panel overlays the WebView.
         FrameLayout.LayoutParams floating = new FrameLayout.LayoutParams(
                 -1, -2, Gravity.BOTTOM | Gravity.START);
-        floating.setMargins(dp(12), 0, dp(12), dp(78));
+        floating.setMargins(dp(12), 0, dp(12), dp(10));
         videoArea.addView(browseTools, floating);
         browseTools.setVisibility(View.GONE);
 
-        floatingToolsButton = new IconButtonView(this, IconButtonView.MORE,
-                "Open video tools", Color.WHITE, accent, accent, accent, false,
-                this::toggleBrowseTools);
-        floatingToolsButton.setFloatingStyle(accent, Color.WHITE);
-        FrameLayout.LayoutParams position = new FrameLayout.LayoutParams(
-                dp(56), dp(56), Gravity.BOTTOM | Gravity.START);
-        position.setMargins(dp(16), 0, 0, dp(13));
-        videoArea.addView(floatingToolsButton, position);
         shell.addView(videoArea, new LinearLayout.LayoutParams(-1, 0, 1));
         addBottom();
     }

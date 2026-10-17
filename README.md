@@ -9,8 +9,9 @@ Native Android browser, saved-video organizer, and built-in direct downloader fo
 - WebView browser with TikTok navigation, sharing and local bookmarks.
 - Light theme by default, optional dark theme. The native header and bottom bar respect Android status, navigation, cutout and keyboard insets.
 - Native icon-only actions throughout the app (including navigation, bookmarks, settings, and confirmation dialogs), with accessible spoken labels and tooltips.
-- **Video-first Explore layout:** the WebView fills the area directly beneath the Android system-bar inset. The title, URL strip and permanent toolbar are removed in Explore; the floating button reveals actions without reloading the video.
-- **Floating video tools:** a premium, round three-dot button sits at the bottom-left of the video. It opens a two-row context menu with Home, Save, Download, Share, Back, Forward, Refresh and Copy Link. The menu overlays the player without shrinking it.
+- **Video-first Explore layout:** the WebView fills the area beneath the Android system-bar inset. The title, URL strip and permanent toolbar are removed; the separate bottom dock contains app controls without overlaying TikTok's navigation.
+- **Unobstructed floating video tools:** the raised three-dot action sits in the bottom-left app dock, entirely outside the TikTok WebView. It opens a two-row context menu with Home, Save, Download, Share, Back, Forward, Refresh and Copy Link. The closed button never obscures TikTok's own Home or other controls.
+- **Refined bottom dock:** one rounded pill groups four glyph-only destinations, with a quiet active selection and consistent 48dp touch targets instead of separately outlined navigation buttons.
 - **Clean browsing:** known third-party advertising domains are blocked before resource load; a TikTok-only page script suppresses identified ad cards and TikTok Lite promotional dialogs, including content inserted after navigation. These protections are enabled by default. TikTok may change its markup or serve first-party ads that evade these rules.
 - **Searchable Saved library:** filter by title, creator or URL, and favorite important videos to keep them first.
 - **Private Recent history:** on-device, capped at 150 video URLs, searchable with Save/Download/Open actions; optional history recording can be disabled or cleared in Settings.
