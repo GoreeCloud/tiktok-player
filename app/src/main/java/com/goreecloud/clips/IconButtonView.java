@@ -1,12 +1,14 @@
 package com.goreecloud.clips;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.view.Gravity;
 import android.view.View;
 
@@ -42,10 +44,33 @@ public final class IconButtonView extends View {
         background.setColor(highlighted ? activeFill : fill);
         background.setCornerRadius(corner);
         background.setStroke(dip(1), highlighted ? color : outline);
-        setBackground(background);
+        setBackground(new RippleDrawable(
+                ColorStateList.valueOf(color & 0x33FFFFFF | 0x22000000),
+                background, null));
+        setElevation(dip(1));
         setMinimumHeight(dip(48));
         setMinimumWidth(dip(48));
         setOnClickListener(v -> action.run());
+    }
+
+    /** Premium filled, round floating action surface with elevation and touch ripple. */
+    public void setFloatingStyle(int fill, int iconColor) {
+        ink = iconColor;
+        GradientDrawable pill = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[] { fill, shade(fill, 0.82f) });
+        pill.setCornerRadius(dip(28));
+        pill.setStroke(dip(1), shade(fill, 0.72f));
+        setBackground(new RippleDrawable(
+                ColorStateList.valueOf(0x55FFFFFF), pill, null));
+        setElevation(dip(7));
+        invalidate();
+    }
+
+    private int shade(int c, float factor) {
+        return Color.rgb(Math.round(Color.red(c) * factor),
+                Math.round(Color.green(c) * factor),
+                Math.round(Color.blue(c) * factor));
     }
 
     private int dip(float dp) {
@@ -54,12 +79,13 @@ public final class IconButtonView extends View {
 
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        float unit = dip(24) / 24f;
+        float size = dip(26);
+        float unit = size / 24f;
         canvas.save();
-        canvas.translate((getWidth() - dip(24)) / 2f, (getHeight() - dip(24)) / 2f);
+        canvas.translate((getWidth() - size) / 2f, (getHeight() - size) / 2f);
         canvas.scale(unit, unit);
         pen.setColor(ink);
-        pen.setStrokeWidth(1.9f);
+        pen.setStrokeWidth(2.1f);
         pen.setStrokeCap(Paint.Cap.ROUND);
         pen.setStrokeJoin(Paint.Join.ROUND);
         pen.setStyle(Paint.Style.STROKE);
@@ -83,7 +109,7 @@ public final class IconButtonView extends View {
                 break;
             case EXPLORE:
                 circle(canvas, 12, 12, 9);
-                poly(canvas, 15.5f, 8.5f, 13.3f, 13.3f, 8.5f, 15.5f, 10.7f, 10.7f, 15.5f, 8.5f);
+                poly(canvas, 16.5f, 7.5f, 13.8f, 13.8f, 7.5f, 16.5f, 10.2f, 10.2f, 16.5f, 7.5f);
                 break;
             case LIBRARY:
                 poly(canvas, 4, 4, 9, 4, 9, 19, 4, 19, 4, 4);
@@ -91,13 +117,17 @@ public final class IconButtonView extends View {
                 line(canvas, 18, 7, 21, 19); line(canvas, 17, 14, 20, 13);
                 break;
             case SETTINGS:
-                circle(canvas, 12, 12, 3.2f);
-                for (int i = 0; i < 8; i++) {
-                    double a = Math.PI * i / 4;
-                    line(canvas, 12 + (float)Math.cos(a)*7, 12 + (float)Math.sin(a)*7,
-                            12 + (float)Math.cos(a)*10, 12 + (float)Math.sin(a)*10);
+                Path gear = new Path();
+                for (int i = 0; i < 32; i++) {
+                    double a = -Math.PI / 2 + (i * 2 * Math.PI / 32);
+                    float r = (i % 4 == 0 || i % 4 == 1) ? 9.8f : 7.6f;
+                    float x = 12f + (float)Math.cos(a)*r;
+                    float y = 12f + (float)Math.sin(a)*r;
+                    if (i == 0) gear.moveTo(x, y); else gear.lineTo(x, y);
                 }
-                circle(canvas, 12, 12, 7);
+                gear.close();
+                canvas.drawPath(gear, pen);
+                circle(canvas, 12, 12, 3.2f);
                 break;
             case OPEN:
                 poly(canvas, 14, 4, 20, 4, 20, 10);
@@ -148,9 +178,9 @@ public final class IconButtonView extends View {
                 poly(canvas, 18, 4, 20, 11, 13, 9); break;
             case MORE:
                 pen.setStyle(Paint.Style.FILL);
-                circle(canvas, 5, 12, 1.5f);
-                circle(canvas, 12, 12, 1.5f);
-                circle(canvas, 19, 12, 1.5f);
+                circle(canvas, 5, 12, 2f);
+                circle(canvas, 12, 12, 2f);
+                circle(canvas, 19, 12, 2f);
                 break;
             case HISTORY:
                 canvas.drawArc(new RectF(3, 3, 21, 21), -70, 300, false, pen);

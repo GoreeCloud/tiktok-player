@@ -31,6 +31,11 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebResourceResponse;
+import java.io.InputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import android.widget.EditText;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -61,6 +66,8 @@ public final class MainActivity extends Activity {
     private LinearLayout shell;
     private String currentTab = "browse";
     private LinearLayout browseTools;
+    private IconButtonView floatingToolsButton;
+    private String cleanWebScript = "";
     private boolean browseToolsOpen = false;
     private boolean dark;
     private int background, surface, foreground, secondary, border, accent;
@@ -93,6 +100,7 @@ public final class MainActivity extends Activity {
         setContentView(shell);
         applyColors();
         if (Build.VERSION.SDK_INT >= 30) shell.requestApplyInsets();
+        cleanWebScript = loadCleanWebScript();
         buildWebView();
         String incoming = incomingUrl(getIntent());
         if (incoming != null) browser.loadUrl(incoming);
@@ -254,18 +262,6 @@ public final class MainActivity extends Activity {
         addTab(bottom, "Saved", IconButtonView.LIBRARY, "saved", this::renderSaved);
         addTab(bottom, "Recent", IconButtonView.HISTORY, "recent", this::renderRecent);
         addTab(bottom, "Settings", IconButtonView.SETTINGS, "settings", this::renderSettings);
-        if ("browse".equals(currentTab)) {
-            boolean expanded = browseToolsOpen;
-            int icon = expanded ? IconButtonView.CLOSE : IconButtonView.MORE;
-            String description = expanded ? "Hide video actions" : "Show video actions";
-            IconButtonView menu = new IconButtonView(this, icon, description,
-                    expanded ? accent : secondary, surface, surface,
-                    dark ? Color.parseColor("#2A365C") : Color.parseColor("#E7EEFF"),
-                    expanded, this::toggleBrowseTools);
-            LinearLayout.LayoutParams position = new LinearLayout.LayoutParams(0, dp(48), 1);
-            position.setMargins(dp(4), 0, dp(4), 0);
-            bottom.addView(menu, position);
-        }
         shell.addView(bottom);
     }
 
@@ -277,6 +273,19 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams position = new LinearLayout.LayoutParams(0, dp(48), 1);
         position.setMargins(dp(4), 0, dp(4), 0);
         bar.addView(item, position);
+    }
+
+    private String loadCleanWebScript() {
+        try (InputStream input = getAssets().open("clean_browsing.js");
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] chunk = new byte[4096];
+            int count;
+            while ((count = input.read(chunk)) != -1) output.write(chunk, 0, count);
+            return new String(output.toByteArray(), StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
+            // Never stop browsing because cosmetic suppression failed.
+            return "";
+        }
     }
 
     private void buildWebView() {
@@ -294,6 +303,14 @@ public final class MainActivity extends Activity {
         ws.setSupportMultipleWindows(false);
         browser.setWebChromeClient(new WebChromeClient());
         browser.setWebViewClient(new WebViewClient() {
+            @Override public WebResourceResponse shouldInterceptRequest(
+                    WebView view, WebResourceRequest request) {
+                if (CleanBrowsing.shouldBlockRequest(request.getUrl().toString(),
+                        request.isForMainFrame()))
+                    return new WebResourceResponse("text/plain", "UTF-8",
+                            new ByteArrayInputStream(new byte[0]));
+                return super.shouldInterceptRequest(view, request);
+            }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (!request.isForMainFrame()) return false;
                 String url = request.getUrl().toString();
@@ -305,6 +322,8 @@ public final class MainActivity extends Activity {
             @Override public void onPageFinished(WebView view, String url) {
                 if (settings.getBoolean("history_enabled", true) && MediaUrls.isVideoLink(url))
                     recent.record(view.getTitle(), url);
+                if (MediaUrls.isTikTok(url) && !cleanWebScript.isEmpty())
+                    view.evaluateJavascript(cleanWebScript, null);
             }
         });
         browser.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
@@ -355,11 +374,21 @@ public final class MainActivity extends Activity {
         addControl(navigationActions, "Copy video link", IconButtonView.COPY,
                 () -> { closeBrowseTools(); copyCurrent(); });
         browseTools.addView(navigationActions);
+        // Expand upward from the bottom-left FAB; this panel overlays the WebView.
         FrameLayout.LayoutParams floating = new FrameLayout.LayoutParams(
-                -1, -2, Gravity.BOTTOM);
-        floating.setMargins(dp(10), 0, dp(10), dp(8));
+                -1, -2, Gravity.BOTTOM | Gravity.START);
+        floating.setMargins(dp(12), 0, dp(12), dp(78));
         videoArea.addView(browseTools, floating);
         browseTools.setVisibility(View.GONE);
+
+        floatingToolsButton = new IconButtonView(this, IconButtonView.MORE,
+                "Open video tools", Color.WHITE, accent, accent, accent, false,
+                this::toggleBrowseTools);
+        floatingToolsButton.setFloatingStyle(accent, Color.WHITE);
+        FrameLayout.LayoutParams position = new FrameLayout.LayoutParams(
+                dp(56), dp(56), Gravity.BOTTOM | Gravity.START);
+        position.setMargins(dp(16), 0, 0, dp(13));
+        videoArea.addView(floatingToolsButton, position);
         shell.addView(videoArea, new LinearLayout.LayoutParams(-1, 0, 1));
         addBottom();
     }
@@ -372,10 +401,14 @@ public final class MainActivity extends Activity {
         if (!"browse".equals(currentTab) || browseTools == null) return;
         browseToolsOpen = !browseToolsOpen;
         browseTools.setVisibility(browseToolsOpen ? View.VISIBLE : View.GONE);
-        // Refresh only the navigation bar; preserve the live WebView and video.
-        View last = shell.getChildAt(shell.getChildCount() - 1);
-        if (last != null) shell.removeView(last);
-        addBottom();
+        if (floatingToolsButton != null) {
+            String description = browseToolsOpen ? "Close video tools" : "Open video tools";
+            floatingToolsButton.setContentDescription(description);
+            floatingToolsButton.setTooltipText(description);
+            floatingToolsButton.setSelected(browseToolsOpen);
+            floatingToolsButton.animate().rotation(browseToolsOpen ? 90f : 0f)
+                    .setDuration(150).start();
+        }
     }
 
     private void addControl(LinearLayout row, String label, int glyph, Runnable run) {

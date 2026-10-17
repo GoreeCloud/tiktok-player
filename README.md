@@ -9,8 +9,9 @@ Native Android browser, saved-video organizer, and built-in direct downloader fo
 - WebView browser with TikTok navigation, sharing and local bookmarks.
 - Light theme by default, optional dark theme. The native header and bottom bar respect Android status, navigation, cutout and keyboard insets.
 - Native icon-only actions throughout the app (including navigation, bookmarks, settings, and confirmation dialogs), with accessible spoken labels and tooltips.
-- **Video-first Explore layout:** the video fills the area directly beneath the Android system-bar inset. The title, URL strip and permanent toolbar are removed in Explore. The bottom-bar More icon temporarily reveals actions without reloading the video.
-- **Expanded browser tools:** More opens Home, Save, Download, Share, Back, Forward, Refresh and Copy Link as accessible glyph controls.
+- **Video-first Explore layout:** the WebView fills the area directly beneath the Android system-bar inset. The title, URL strip and permanent toolbar are removed in Explore; the floating button reveals actions without reloading the video.
+- **Floating video tools:** a premium, round three-dot button sits at the bottom-left of the video. It opens a two-row context menu with Home, Save, Download, Share, Back, Forward, Refresh and Copy Link. The menu overlays the player without shrinking it.
+- **Clean browsing:** known third-party advertising domains are blocked before resource load; a TikTok-only page script suppresses identified ad cards and TikTok Lite promotional dialogs, including content inserted after navigation. These protections are enabled by default. TikTok may change its markup or serve first-party ads that evade these rules.
 - **Searchable Saved library:** filter by title, creator or URL, and favorite important videos to keep them first.
 - **Private Recent history:** on-device, capped at 150 video URLs, searchable with Save/Download/Open actions; optional history recording can be disabled or cleared in Settings.
 - **Playback preference:** opt in to keep the screen awake while watching, with an icon-only toggle in Settings.
@@ -24,7 +25,7 @@ Native Android browser, saved-video organizer, and built-in direct downloader fo
 ## Download a video
 
 1. Open a TikTok video or share its URL to GoreeCloud Clips.
-2. Tap the **More** (three-dot) icon in Explore, then the **Download** glyph. If the current page is a recognized video URL, the download confirmation opens immediately; otherwise paste a link.
+2. Tap the **floating three-dot button** at the bottom-left of Explore, then the **Download** glyph. If the current page is a recognized video URL, the download confirmation opens immediately; otherwise paste a link.
 3. Read and acknowledge the creator/copyright warning.
 4. The built-in engine attempts to fetch the video to the device and save it in the video library. No service address needs to be set.
 

@@ -29,6 +29,8 @@ jobs:
           fi
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" --install 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Verify clean browsing popup and ad suppression
+        run: node tests/clean_browsing_smoke.cjs
       - name: Test, lint and assemble debug APK
         run: ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
       - uses: actions/upload-artifact@v4
