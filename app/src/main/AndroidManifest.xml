@@ -20,5 +20,16 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+        <!-- Non-exported activities in distinct processes isolate WebView cookies and storage. -->
+        <activity android:name=".ProfileActivity1" android:process=":clips_profile_1"
+            android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".ProfileActivity2" android:process=":clips_profile_2"
+            android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".ProfileActivity3" android:process=":clips_profile_3"
+            android:exported="false" android:configChanges="orientation|screenSize|keyboardHidden" />
+        <provider android:name=".ProfileRegistryProvider"
+            android:authorities="${applicationId}.profiles"
+            android:process=":clips_registry"
+            android:exported="false" />
     </application>
 </manifest>

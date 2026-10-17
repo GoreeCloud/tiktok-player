@@ -59,7 +59,7 @@ import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class MainActivity extends Activity {
+public class MainActivity extends Activity {
     private static final String HOME = "https://www.tiktok.com/";
     private static final String PREFS = "goreecloud_clips_prefs";
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -77,15 +77,50 @@ public final class MainActivity extends Activity {
     private Runnable pendingLongPress;
     private float pressStartX, pressStartY;
     private boolean longPressActivated;
+    private int activeProfileSlot;
+    private static boolean webViewSuffixConfigured;
     private String cleanWebScript = "";
     private boolean dark;
     private int background, surface, foreground, secondary, border, accent;
 
+    /** Profile activities run in separate Android processes and WebView data directories. */
+    protected int profileSlot() { return 0; }
+
     @Override public void onCreate(Bundle state) {
+        activeProfileSlot = profileSlot();
+        // Configure only once per process. A returning Activity in the same
+        // profile process must not call this after WebView has initialized.
+        if (activeProfileSlot > 0 && Build.VERSION.SDK_INT >= 28) {
+            synchronized (MainActivity.class) {
+                if (!webViewSuffixConfigured) {
+                    WebView.setDataDirectorySuffix("goreecloud_clips_profile_" +
+                            activeProfileSlot);
+                    webViewSuffixConfigured = true;
+                }
+            }
+        }
         super.onCreate(state);
-        settings = getSharedPreferences(PREFS, MODE_PRIVATE);
-        bookmarks = new BookmarkStore(this);
-        recent = new HistoryStore(this);
+        if (activeProfileSlot > 0 && (Build.VERSION.SDK_INT < 28 ||
+                !ProfileRegistry.exists(this, activeProfileSlot))) {
+            finish();
+            return;
+        }
+        // Cold launcher starts the last selected profile. Preserve default's old cookies.
+        if (activeProfileSlot == 0 && getClass() == MainActivity.class &&
+                Build.VERSION.SDK_INT >= 28) {
+            int selected = ProfileRegistry.active(this);
+            if (selected > 0 && ProfileRegistry.exists(this, selected)) {
+                Intent handoff = new Intent(getIntent());
+                handoff.setClass(this, ProfileRegistry.activityForSlot(selected));
+                startActivity(handoff);
+                finish();
+                return;
+            }
+        }
+        settings = getSharedPreferences(ProfileRegistry.prefName(PREFS, activeProfileSlot),
+                MODE_PRIVATE);
+        bookmarks = new BookmarkStore(this, activeProfileSlot);
+        recent = new HistoryStore(this, activeProfileSlot);
         updateKeepAwake();
         dark = settings.getBoolean("dark", false);
         background = Color.parseColor(dark ? "#111522" : "#F7F8FB");
@@ -402,13 +437,17 @@ public final class MainActivity extends Activity {
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(16), dp(14), dp(16), dp(16));
         content.setBackgroundColor(surface);
-        TextView heading = text("GoreeCloud Clips", 18, foreground, true);
+        TextView heading = text("GoreeCloud Clips · " + ProfileRegistry.label(this, activeProfileSlot), 18, foreground, true);
         content.addView(heading);
         TextView hint = text("Video and app tools", 13, secondary, false);
         content.addView(hint);
         gap(content, 8);
 
         addSheetSection(content, "YOUR SPACE");
+        addSheetItem(content, "Profiles", "Switch accounts · " +
+                ProfileRegistry.label(this, activeProfileSlot), this::renderProfiles);
+        addSheetItem(content, "Shared library", "Videos you explicitly share between profiles",
+                this::renderShared);
         addSheetItem(content, "Saved library", "Bookmarked videos and favorites", this::renderSaved);
         addSheetItem(content, "Recent history", "Previously visited video pages", this::renderRecent);
         addSheetItem(content, "Downloads", "View downloaded and queued files", this::openDownloads);
@@ -416,6 +455,8 @@ public final class MainActivity extends Activity {
 
         gap(content, 7);
         addSheetSection(content, "THIS VIDEO");
+        addSheetItem(content, "Save to shared", "Keep this video available in all local profiles",
+                this::saveToShared);
         addSheetItem(content, "Save video", "Add this page to your library", this::saveCurrent);
         addSheetItem(content, "Download video", "Permissions confirmation required",
                 () -> startOrPrompt(browser.getUrl()));
@@ -480,6 +521,9 @@ public final class MainActivity extends Activity {
     /** DPI-aware native vector actions; each glyph accompanies readable text. */
     private int contextActionIcon(String title) {
         switch (title) {
+            case "Profiles": return R.drawable.gc_ic_settings;
+            case "Shared library": return R.drawable.gc_ic_library;
+            case "Save to shared": return R.drawable.gc_ic_save;
             case "Saved library": return R.drawable.gc_ic_library;
             case "Recent history": return R.drawable.gc_ic_history;
             case "Downloads": return R.drawable.gc_ic_downloads;
@@ -551,6 +595,133 @@ public final class MainActivity extends Activity {
         } catch (Exception e) {
             toast("Android Downloads is not available on this device.");
         }
+    }
+
+    private void saveToShared() {
+        String url = browser.getUrl();
+        if (!MediaUrls.isTikTok(url)) { toast("Open a TikTok video first."); return; }
+        if (ProfileRegistry.sharedSave(this, browser.getTitle(), url))
+            toast("Saved to your shared library.");
+        else toast("Unable to save the shared video.");
+    }
+
+    private void switchToProfile(int slot) {
+        if (slot == activeProfileSlot) { renderBrowse(); return; }
+        if (!ProfileRegistry.exists(this, slot)) {
+            toast("Profile is unavailable.");
+            return;
+        }
+        if (slot != 0 && Build.VERSION.SDK_INT < 28) {
+            toast("Separate browser sessions require Android 9 or newer.");
+            return;
+        }
+        if (!ProfileRegistry.activate(this, slot)) {
+            toast("Could not change profiles.");
+            return;
+        }
+        Intent next = new Intent(this, ProfileRegistry.activityForSlot(slot));
+        next.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(next);
+        finish();
+    }
+
+    private void renderProfiles() {
+        currentTab = "profiles";
+        reset("Private local TikTok accounts");
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        body.setPadding(dp(18), dp(8), dp(18), dp(28));
+        body.addView(text("Profiles", 21, foreground, true));
+        gap(body, 8);
+        body.addView(text("Each profile has its own TikTok login, saved videos, favorites, history and settings. Existing data stays with Default. Shared videos are explicit only.", 13, secondary, false));
+        gap(body, 15);
+        for (int slot = 0; slot < ProfileRegistry.COUNT; slot++) {
+            if (!ProfileRegistry.exists(this, slot)) continue;
+            final int chosen = slot;
+            String name = ProfileRegistry.label(this, slot);
+            body.addView(settingsAction((slot == activeProfileSlot ? "✓  " : "") + name,
+                    IconButtonView.LIBRARY, () -> switchToProfile(chosen)));
+            gap(body, 7);
+        }
+        if (Build.VERSION.SDK_INT >= 28 && ProfileRegistry.nextAvailable(this) > 0) {
+            body.addView(settingsAction("Create profile", IconButtonView.SAVE,
+                    this::promptNewProfile));
+            gap(body, 7);
+        }
+        body.addView(settingsAction("Rename current profile", IconButtonView.SETTINGS,
+                this::promptRenameProfile));
+        gap(body, 18);
+        body.addView(settingsAction("Shared library", IconButtonView.LIBRARY,
+                this::renderShared));
+        gap(body, 15);
+        body.addView(text("Up to four local profiles. Profiles are not TikTok accounts themselves: sign in separately after switching. For safety, occupied slots are not deleted or reused in this version.", 12, secondary, false));
+        scroll.addView(body);
+        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+    }
+
+    private void promptNewProfile() {
+        EditText field = new EditText(this);
+        field.setSingleLine(true);
+        field.setHint("Profile name");
+        field.setTextColor(foreground);
+        field.setHintTextColor(secondary);
+        field.setPadding(dp(22), dp(14), dp(22), dp(14));
+        new IconDialogBuilder().setTitle("Create private profile")
+                .setMessage("The new profile will have an independent TikTok session and empty private library.")
+                .setView(field)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Create", (dialog, which) -> {
+                    int slot = ProfileRegistry.create(this, field.getText().toString());
+                    if (slot >= 1) switchToProfile(slot);
+                    else { toast("Could not create profile."); renderProfiles(); }
+                }).show();
+    }
+
+    private void promptRenameProfile() {
+        EditText field = new EditText(this);
+        field.setSingleLine(true);
+        field.setText(ProfileRegistry.label(this, activeProfileSlot));
+        field.setTextColor(foreground);
+        field.setPadding(dp(22), dp(14), dp(22), dp(14));
+        new IconDialogBuilder().setTitle("Rename profile")
+                .setView(field)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Save", (dialog, which) -> {
+                    if (ProfileRegistry.rename(this, activeProfileSlot, field.getText().toString()))
+                        renderProfiles();
+                    else toast("Profile name cannot be empty.");
+                }).show();
+    }
+
+    private void renderShared() {
+        currentTab = "shared";
+        reset("Explicitly shared local videos");
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout cards = new LinearLayout(this);
+        cards.setOrientation(LinearLayout.VERTICAL);
+        cards.setPadding(dp(18), dp(12), dp(18), dp(25));
+        cards.addView(text("Shared library", 20, foreground, true));
+        gap(cards, 8);
+        cards.addView(text("Visible to all local GoreeCloud Clips profiles. Private saved videos and history never appear here automatically.", 12, secondary, false));
+        gap(cards, 12);
+        List<BookmarkStore.Item> items = ProfileRegistry.sharedAll(this);
+        if (items.isEmpty()) cards.addView(text("No shared videos yet. Use Save to shared from a video.", 14, secondary, false));
+        for (BookmarkStore.Item video : items) {
+            LinearLayout card = videoCard(video);
+            LinearLayout actions = row();
+            addLibraryAction(actions, "Open shared video", IconButtonView.OPEN,
+                    () -> { browser.loadUrl(video.url); renderBrowse(); });
+            addLibraryAction(actions, "Save to private library", IconButtonView.BOOKMARK,
+                    () -> { bookmarks.save(video.title, video.url); toast("Saved privately."); });
+            addLibraryAction(actions, "Remove shared video", IconButtonView.TRASH,
+                    () -> { ProfileRegistry.sharedRemove(this, video.url); renderShared(); });
+            card.addView(actions);
+            cards.addView(card);
+            gap(cards, 10);
+        }
+        scroll.addView(cards);
+        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
     }
 
     private void saveCurrent() {
@@ -751,6 +922,12 @@ public final class MainActivity extends Activity {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(18), dp(6), dp(18), dp(25));
+        content.addView(text("Current profile: " + ProfileRegistry.label(this, activeProfileSlot),
+                17, foreground, true));
+        gap(content, 8);
+        content.addView(settingsAction("Manage profiles", IconButtonView.LIBRARY,
+                this::renderProfiles));
+        gap(content, 18);
         content.addView(text("Direct downloads", 19, foreground, true));
         gap(content, 8);
         content.addView(text("Built-in downloader is enabled automatically. Authorized videos download to Movies / GoreeCloud Clips; no third-party service configuration is required.", 13, secondary, false));
@@ -810,7 +987,7 @@ public final class MainActivity extends Activity {
         gap(content, 22);
         content.addView(text("Privacy", 19, foreground, true));
         gap(content, 8);
-        content.addView(text("Saved videos and optional recent history stay on this device. No analytics, account syncing, or invisible video downloads. Website cookies remain in the embedded browser.", 13, secondary, false));
+        content.addView(text("Each local profile stores separate saved videos, history and browser session data. No account syncing or analytics. Only explicitly shared videos appear in Shared library.", 13, secondary, false));
         gap(content, 10);
         content.addView(settingsAction(settings.getBoolean("history_enabled", true)
                 ? "Turn off recent history" : "Turn on local recent history",
