@@ -40,6 +40,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebResourceResponse;
+import android.webkit.WebResourceError;
+import android.graphics.Bitmap;
 import java.io.InputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -75,8 +77,9 @@ public class MainActivity extends Activity {
     private String currentTab = "browse";
     private Dialog contextSheet;
     private Runnable pendingLongPress;
-    private float pressStartX, pressStartY;
-    private boolean longPressActivated;
+    private float pressStartX, pressStartY, secondPressStartX, secondPressStartY;
+    private AlertDialog profileRecoveryDialog;
+    private String activeMainFrameUrl;
     private int activeProfileSlot;
     private static boolean webViewSuffixConfigured;
     private String cleanWebScript = "";
@@ -150,9 +153,9 @@ public class MainActivity extends Activity {
         if (incoming != null) browser.loadUrl(incoming);
         else browser.loadUrl(HOME);
         renderBrowse();
-        if (!settings.getBoolean("gesture_discovered", false)) {
-            settings.edit().putBoolean("gesture_discovered", true).apply();
-            browser.postDelayed(() -> toast("Press and hold a video to open GoreeCloud tools."), 950);
+        if (!settings.getBoolean("two_finger_tools_discovered", false)) {
+            settings.edit().putBoolean("two_finger_tools_discovered", true).apply();
+            browser.postDelayed(() -> toast("Touch and hold with two fingers to open GoreeCloud tools."), 950);
         }
     }
 
