@@ -1,44 +1,47 @@
 # GoreeCloud Clips
 
-Native Android browser and personal media organizer for TikTok links. This repository is named **GoreeCloud/tiktok-player**, and the application is named **GoreeCloud Clips**.
+Native Android browser, saved-video organizer, and built-in direct downloader for TikTok video links. Repository: **GoreeCloud/tiktok-player**.
 
-**Status: development preview, not yet a stable release.** Not affiliated with or endorsed by TikTok.
+**Status: experimental development build, not a stable release.** Not affiliated with TikTok.
 
-## Features in the first implementation
+## Working features
 
-- Embedded TikTok browser with external links opened in the system browser.
-- Native light-first UI, optional dark mode, and browser navigation.
-- Bookmark TikTok pages in a local, searchable-by-reading saved list; open, remove and download from saved entries.
-- Android share-sheet support for incoming TikTok links and outgoing shares.
-- Rights confirmation before every download action, including website-originated downloads.
-- User-configurable, HTTPS-only Cobalt-compatible API instance using the `POST /` JSON contract.
-- Android DownloadManager downloads to the public Downloads folder, with notifications.
-- Optional manual external downloader link. No tracking, sync, server URL, or authentication token is bundled.
+- WebView browser with TikTok navigation, sharing and local bookmarks.
+- Light theme by default, optional dark theme.
+- **Direct Download** built into the Android app. No downloader website or provider configuration is required.
+- On-device yt-dlp engine attempts to obtain accessible video media after explicit rights confirmation. The app does not transmit user-selected links to a third-party download API for this default path.
+- Finished files are published to Android MediaStore under **Movies / GoreeCloud Clips** on Android 10+. On Android 8–9 they remain in the app-specific Movies folder (not automatically indexed by Gallery).
+- Progress is handled asynchronously; only one direct download is active at a time.
+- Optional Cobalt-compatible processing endpoint in Settings can be used **only after a direct-download failure and a separate explicit retry**. A direct service URL from the provider is handed to Android DownloadManager.
+- External cobalt.tools link remains a separate manual option.
 
-## Download-provider configuration
+## Download a video
 
-Open **Settings** and enter the public HTTPS origin of a Cobalt-compatible server that you **operate or have permission to use** (e.g., `https://your-instance.example/`). Public hosted endpoints may disallow third-party clients or require authentication. This version does not support authenticated instances, slideshow pickers or local remuxing. These produce explanatory errors rather than a silent failure.
+1. Open a TikTok video or share its URL to GoreeCloud Clips.
+2. Tap **Download**. If the current page is a recognized video URL, the download confirmation opens immediately; otherwise paste a link.
+3. Read and acknowledge the creator/copyright warning.
+4. The built-in engine attempts to fetch the video to the device and save it in the video library. No service address needs to be set.
 
-When you tap **Download**, enter a valid TikTok video link, read and acknowledge the copyright warning, and then the app sends **only that link** to the configured server. If the server returns a supported direct HTTPS media URL, the app queues the transfer using Android DownloadManager. Content rights, regional laws, creator settings, and service terms apply. A warning is not a license. The app does not deliberately remove watermarks or bypass access controls.
+**Limitations:** Direct extraction depends on publicly accessible media and TikTok's current website behavior. The bundled free yt-dlp Android library does **not** implement browser TLS fingerprint impersonation, and some TikTok requests may be blocked. The copyright warning is not a grant of permissions; download only media you own or are permitted to download. Do not bypass access controls or assume every public video may be downloaded. No watermark-removal function is included.
 
-A separate **Open cobalt.tools** button opens the official site in your browser, where you can enter links manually. It is not a default public API endpoint.
+## Optional processing endpoint
 
-**Important:** TikTok itself can limit embedded-WebView login, autoplay and downloads. This wrapper does not bypass those restrictions. Video downloads from unofficial third-party tools may not reflect creator permissions, so download only your own content or content for which you have explicit authorization.
+Settings can retain an approved HTTPS Cobalt-compatible service for manual fallback. No service is set by default and browser credentials or cookies are not exported to the service.
 
-## Build
+## Build and verification
 
-Requires JDK 17, Android SDK Platform 35 and Gradle (wrapper included).
+Requires JDK 17, Android SDK Platform 35, the Gradle wrapper, and Internet access to Maven Central for the embedded yt-dlp runtime.
 
 ```bash
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-Development APK: `app/build/outputs/apk/debug/app-debug.apk`. This path only exists after a successful build. Do not distribute production APKs from unsigned or unreviewed source changes.
+Development APK: `app/build/outputs/apk/debug/app-debug.apk` after a successful build. GitHub Actions uploads the debug build artifact.
 
-## Architecture
+## Development status
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/QA.md](docs/QA.md) and [SECURITY.md](SECURITY.md).
+The APK must be installed and tested on a real Android device with authorized test videos. A successful build does not establish TikTok playback or downloader compatibility. See [docs/QA.md](docs/QA.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## License
+## Licensing
 
-Project-original code is released under the MIT license. No TikTok or Cobalt source is vendored into this repository.
+Project-original code is MIT-licensed. The native downloader uses the third-party MIT-licensed `dev.ffmpegkit-maintained:yt-dlp-android:2.0.2` library, which includes bundled components with their own notices. See [THIRD-PARTY.md](THIRD-PARTY.md) and the library's `THIRD-PARTY-NOTICES.txt`. No TikTok code is incorporated.

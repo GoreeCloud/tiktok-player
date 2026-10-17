@@ -6,6 +6,7 @@
         android:theme="@style/Theme.GoreeCloudClips"
         android:usesCleartextTraffic="false"
         android:allowBackup="false"
+        android:extractNativeLibs="true"
         android:supportsRtl="true">
         <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter>
