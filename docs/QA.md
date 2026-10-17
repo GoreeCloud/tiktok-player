@@ -20,8 +20,9 @@
 - [ ] Tap or swipe a TikTok Lite promotion: known app-store HTTPS URLs and `market://` / `intent://` deep links cannot launch Android apps.
 - [ ] Allow normal TikTok feed navigation and video playback; native long-press context actions still work.
 - [ ] Verify background and JavaScript-triggered off-site navigation is blocked without an external-app prompt.
-- [ ] Tap a legitimate HTTPS link to a non-TikTok site: only an explicit navigation gesture can show a confirmation; Stay remains in Clips; Open uses the system handler.
-- [ ] Check web redirects to another HTTPS site: they must be silently blocked, not treated as user-authorized navigation.
+- [ ] Reproduce repeated swipes over a page that attempts `snssdk1340.onelink.me` or another off-site attribution redirect: it must be blocked **without a popup** and without launching Play Store.
+- [ ] Tap an off-site link inside TikTok: no external app opens and no navigation confirmation appears. An Android WebView gesture bit is insufficient proof of an intentional link tap.
+- [ ] Check all embedded-page off-site redirects are blocked, while the explicit native Settings → Open cobalt.tools action still works.
 - [ ] Repeat in Default and additional isolated profiles on representative Android devices.
 - [ ] Confirm `NavigationPolicyTest`, `testDebugUnitTest`, lint, and APK build pass at the exact PR head.
 - [ ] Confirm update-signature compatibility before distributing an APK to replace an installed development build.
