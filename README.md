@@ -7,15 +7,15 @@ Native Android browser, saved-video organizer, and built-in direct downloader fo
 ## Working features
 
 - WebView browser with TikTok navigation, sharing and local bookmarks.
-- Light theme by default, optional dark theme. The native header and bottom bar respect Android status, navigation, cutout and keyboard insets.
-- Native icon-only actions throughout the app (including navigation, bookmarks, settings, and confirmation dialogs), with accessible spoken labels and tooltips.
-- **Video-first Explore layout:** the WebView fills the area beneath the Android system-bar inset. The title, URL strip and permanent toolbar are removed; the separate bottom dock contains app controls without overlaying TikTok's navigation.
-- **Unobstructed floating video tools:** the raised three-dot action sits in the bottom-left app dock, entirely outside the TikTok WebView. It opens a two-row context menu with Home, Save, Download, Share, Back, Forward, Refresh and Copy Link. The closed button never obscures TikTok's own Home or other controls.
-- **Refined bottom dock:** one rounded pill groups four glyph-only destinations, with a quiet active selection and consistent 48dp touch targets instead of separately outlined navigation buttons.
+- Light theme by default, optional dark theme, and correct Android status/navigation/cutout/keyboard insets.
+- **Full-screen, gesture-driven player:** no GoreeCloud toolbar, bottom navigation, floating button, or persistent control overlay. TikTok's own controls remain unobstructed.
+- **Long-press context menu:** press and hold the TikTok video area to open a native, scrollable, text-first action sheet containing Saved library, Recent history, Android Downloads, Settings, Save, Download, Share, Copy Link, Home, Back, Forward and Refresh.
+- **Accessible navigation on secondary pages:** Android Back returns to the player; long-press the page header to open the same context menu.
+- **Readable controls:** Saved, Recent, Settings and confirmation dialogs use accessible text labels instead of custom hand-drawn glyphs.
 - **Clean browsing:** known third-party advertising domains are blocked before resource load; a TikTok-only page script suppresses identified ad cards and TikTok Lite promotional dialogs, including content inserted after navigation. These protections are enabled by default. TikTok may change its markup or serve first-party ads that evade these rules.
 - **Searchable Saved library:** filter by title, creator or URL, and favorite important videos to keep them first.
 - **Private Recent history:** on-device, capped at 150 video URLs, searchable with Save/Download/Open actions; optional history recording can be disabled or cleared in Settings.
-- **Playback preference:** opt in to keep the screen awake while watching, with an icon-only toggle in Settings.
+- **Playback preference:** opt in to keep the screen awake while watching, in Settings.
 - **Direct Download** built into the Android app. No downloader website or provider configuration is required.
 - On-device yt-dlp engine attempts to obtain accessible video media after explicit rights confirmation. The app does not transmit user-selected links to a third-party download API for this default path.
 - Finished files are published to Android MediaStore under **Movies / GoreeCloud Clips** on Android 10+. On Android 8–9 they remain in the app-specific Movies folder (not automatically indexed by Gallery).
@@ -26,7 +26,7 @@ Native Android browser, saved-video organizer, and built-in direct downloader fo
 ## Download a video
 
 1. Open a TikTok video or share its URL to GoreeCloud Clips.
-2. Tap the **floating three-dot button** at the bottom-left of Explore, then the **Download** glyph. If the current page is a recognized video URL, the download confirmation opens immediately; otherwise paste a link.
+2. **Press and hold the video** to open GoreeCloud's context menu, then choose **Download video**. If the current page is a recognized video URL, the permission confirmation opens; otherwise paste a link.
 3. Read and acknowledge the creator/copyright warning.
 4. The built-in engine attempts to fetch the video to the device and save it in the video library. No service address needs to be set.
 

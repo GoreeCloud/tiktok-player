@@ -1,7 +1,7 @@
 name: Video Player Device QA
 on:
   push:
-    branches: [feature/video-first-layout-*, feature/library-browser-tools-*, feature/floating-menu-clean-web-*, feature/refined-dock-unobstructed-tools-*]
+    branches: [feature/video-first-layout-*, feature/library-browser-tools-*, feature/floating-menu-clean-web-*, feature/refined-dock-unobstructed-tools-*, feature/long-press-video-context-*]
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,9 +26,9 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" --install 'platforms;android-35' 'build-tools;35.0.0'
       - name: Build isolated device QA APK
-        run: ./gradlew --no-daemon -PqaSuffix=.dockqa :app:assembleDebug
+        run: ./gradlew --no-daemon -PqaSuffix=.gestureqa :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: goreecloud-clips-dockqa
+          name: goreecloud-clips-gestureqa
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error

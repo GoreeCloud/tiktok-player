@@ -4,6 +4,12 @@ import android.app.Activity;
 import java.util.concurrent.atomic.AtomicBoolean;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
+import android.app.Dialog;
+import android.graphics.drawable.ColorDrawable;
+import android.view.MotionEvent;
+import android.view.HapticFeedbackConstants;
+import android.view.ViewConfiguration;
+import android.view.Window;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -65,10 +71,11 @@ public final class MainActivity extends Activity {
     private WebView browser;
     private LinearLayout shell;
     private String currentTab = "browse";
-    private LinearLayout browseTools;
-    private IconButtonView floatingToolsButton;
+    private Dialog contextSheet;
+    private Runnable pendingLongPress;
+    private float pressStartX, pressStartY;
+    private boolean longPressActivated;
     private String cleanWebScript = "";
-    private boolean browseToolsOpen = false;
     private boolean dark;
     private int background, surface, foreground, secondary, border, accent;
 
@@ -106,6 +113,10 @@ public final class MainActivity extends Activity {
         if (incoming != null) browser.loadUrl(incoming);
         else browser.loadUrl(HOME);
         renderBrowse();
+        if (!settings.getBoolean("gesture_discovered", false)) {
+            settings.edit().putBoolean("gesture_discovered", true).apply();
+            browser.postDelayed(() -> toast("Press and hold a video to open GoreeCloud tools."), 950);
+        }
     }
 
     @Override protected void onNewIntent(Intent intent) {
@@ -119,6 +130,11 @@ public final class MainActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        cancelLongPress();
+        if (contextSheet != null) {
+            contextSheet.dismiss();
+            contextSheet = null;
+        }
         executor.shutdownNow();
         if (browser != null) {
             ViewGroup parent = (ViewGroup) browser.getParent();
@@ -130,7 +146,6 @@ public final class MainActivity extends Activity {
 
     @Override public void onBackPressed() {
         if (!"browse".equals(currentTab)) { renderBrowse(); return; }
-        if (browseToolsOpen) { toggleBrowseTools(); return; }
         if (browser.canGoBack()) { browser.goBack(); return; }
         super.onBackPressed();
     }
@@ -185,18 +200,17 @@ public final class MainActivity extends Activity {
         return view;
     }
 
-    private IconButtonView action(String label, int glyph, Runnable run) {
-        return new IconButtonView(this, glyph, label, foreground,
-                surface, border, surface, false, run);
-    }
-
-    private View settingsAction(String label, int glyph, Runnable run) {
+    private View settingsAction(String label, int unusedGlyph, Runnable run) {
         LinearLayout line = row();
-        line.setPadding(dp(5), dp(4), dp(5), dp(4));
-        TextView description = text(label, 14, foreground, false);
+        line.setPadding(dp(15), dp(9), dp(15), dp(9));
+        line.setMinimumHeight(dp(52));
+        line.setBackground(rounded(surface, border, 14));
+        line.setClickable(true);
+        line.setFocusable(true);
+        line.setContentDescription(label);
+        TextView description = text(label, 14, foreground, true);
         line.addView(description, new LinearLayout.LayoutParams(0, -2, 1));
-        IconButtonView button = action(label, glyph, run);
-        line.addView(button, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        line.setOnClickListener(view -> run.run());
         return line;
     }
 
@@ -215,15 +229,8 @@ public final class MainActivity extends Activity {
     private void decorateDialogButton(Button button, boolean positive) {
         if (button == null) return;
         String original = button.getText().toString();
-        String glyph = positive ? "✓" : "✕";
-        if (original.equalsIgnoreCase("Settings")) glyph = "⚙";
-        if (original.toLowerCase(Locale.ROOT).contains("provider")) glyph = "↻";
-        if (original.equalsIgnoreCase("Delete")) glyph = "⌫";
-        if (original.equalsIgnoreCase("Continue")) glyph = "›";
-        button.setText(glyph);
         button.setAllCaps(false);
-        button.setTextSize(24);
-        button.setMinWidth(dp(48));
+        button.setTextSize(14);
         button.setMinHeight(dp(48));
         button.setContentDescription(original);
         button.setTooltipText(original);
@@ -251,54 +258,16 @@ public final class MainActivity extends Activity {
         TextView sub = text(subtitle, 12, secondary, false);
         top.addView(title);
         top.addView(sub);
+        top.setContentDescription("GoreeCloud Clips. Long press for app navigation.");
+        top.setOnLongClickListener(view -> {
+            showContextSheet();
+            return true;
+        });
+        title.setOnLongClickListener(view -> {
+            showContextSheet();
+            return true;
+        });
         shell.addView(top);
-    }
-
-    /**
-     * A true app-owned bottom dock. Every touch target is below the browser
-     * viewport, so the floating action can never cover TikTok's Home control.
-     * A single pill unifies the destinations instead of four separate boxes.
-     */
-    private void addBottom() {
-        LinearLayout dock = row();
-        dock.setPadding(dp(12), dp(5), dp(12), dp(7));
-        dock.setBackgroundColor(background);
-
-        floatingToolsButton = new IconButtonView(this, IconButtonView.MORE,
-                browseToolsOpen ? "Close video tools" : "Open video tools",
-                Color.WHITE, accent, accent, accent, browseToolsOpen,
-                this::openVideoTools);
-        floatingToolsButton.setFloatingStyle(accent, Color.WHITE);
-        LinearLayout.LayoutParams menuPosition = new LinearLayout.LayoutParams(dp(48), dp(48));
-        dock.addView(floatingToolsButton, menuPosition);
-
-        View space = new View(this);
-        dock.addView(space, new LinearLayout.LayoutParams(dp(10), dp(1)));
-
-        LinearLayout destinations = row();
-        destinations.setPadding(dp(3), 0, dp(3), 0);
-        destinations.setBackground(rounded(surface, border, 24));
-        addTab(destinations, "Explore", IconButtonView.EXPLORE, "browse", this::renderBrowse);
-        addTab(destinations, "Saved", IconButtonView.LIBRARY, "saved", this::renderSaved);
-        addTab(destinations, "Recent", IconButtonView.HISTORY, "recent", this::renderRecent);
-        addTab(destinations, "Settings", IconButtonView.SETTINGS, "settings", this::renderSettings);
-        dock.addView(destinations, new LinearLayout.LayoutParams(0, dp(48), 1));
-        shell.addView(dock);
-    }
-
-    private void openVideoTools() {
-        if (!"browse".equals(currentTab)) renderBrowse();
-        toggleBrowseTools();
-    }
-
-    private void addTab(LinearLayout bar, String label, int glyph, String tab, Runnable run) {
-        boolean selected = currentTab.equals(tab);
-        IconButtonView item = new IconButtonView(this, glyph, label,
-                selected ? accent : secondary, surface, surface, surface, selected, run);
-        item.setNavigationStyle(selected, accent, secondary,
-                dark ? Color.parseColor("#293754") : Color.parseColor("#EAF0FF"));
-        LinearLayout.LayoutParams position = new LinearLayout.LayoutParams(0, dp(48), 1);
-        bar.addView(item, position);
     }
 
     private String loadCleanWebScript() {
@@ -328,6 +297,7 @@ public final class MainActivity extends Activity {
         ws.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         ws.setSupportMultipleWindows(false);
         browser.setWebChromeClient(new WebChromeClient());
+        installLongPressGesture();
         browser.setWebViewClient(new WebViewClient() {
             @Override public WebResourceResponse shouldInterceptRequest(
                     WebView view, WebResourceRequest request) {
@@ -363,77 +333,187 @@ public final class MainActivity extends Activity {
 
     private void renderBrowse() {
         currentTab = "browse";
-        browseToolsOpen = false;
-        // Video-first layout: the player begins directly under Android's safe
-        // system-bar inset. The permanent title, URL and toolbar are removed.
         shell.removeAllViews();
         shell.setBackgroundColor(background);
-        FrameLayout videoArea = new FrameLayout(this);
         ViewGroup oldParent = (ViewGroup) browser.getParent();
         if (oldParent != null) oldParent.removeView(browser);
-        videoArea.addView(browser, new FrameLayout.LayoutParams(-1, -1));
-
-        browseTools = new LinearLayout(this);
-        browseTools.setOrientation(LinearLayout.VERTICAL);
-        browseTools.setPadding(dp(8), dp(7), dp(8), dp(7));
-        browseTools.setBackground(rounded(surface, border, 16));
-        LinearLayout primaryActions = row();
-        addControl(primaryActions, "Home", IconButtonView.HOME,
-                () -> { closeBrowseTools(); browser.loadUrl(HOME); });
-        addControl(primaryActions, "Save", IconButtonView.BOOKMARK,
-                () -> { closeBrowseTools(); saveCurrent(); });
-        addControl(primaryActions, "Download", IconButtonView.DOWNLOAD,
-                () -> { closeBrowseTools(); startOrPrompt(browser.getUrl()); });
-        addControl(primaryActions, "Share", IconButtonView.SHARE,
-                () -> { closeBrowseTools(); shareCurrent(); });
-        browseTools.addView(primaryActions);
-        gap(browseTools, 5);
-        LinearLayout navigationActions = row();
-        addControl(navigationActions, "Go back", IconButtonView.BACK,
-                () -> { closeBrowseTools(); if (browser.canGoBack()) browser.goBack();
-                         else toast("No previous page."); });
-        addControl(navigationActions, "Go forward", IconButtonView.FORWARD,
-                () -> { closeBrowseTools(); if (browser.canGoForward()) browser.goForward();
-                         else toast("No next page."); });
-        addControl(navigationActions, "Refresh video page", IconButtonView.RETRY,
-                () -> { closeBrowseTools(); browser.reload(); });
-        addControl(navigationActions, "Copy video link", IconButtonView.COPY,
-                () -> { closeBrowseTools(); copyCurrent(); });
-        browseTools.addView(navigationActions);
-        // Expand upward from the bottom-left FAB; this panel overlays the WebView.
-        FrameLayout.LayoutParams floating = new FrameLayout.LayoutParams(
-                -1, -2, Gravity.BOTTOM | Gravity.START);
-        floating.setMargins(dp(12), 0, dp(12), dp(10));
-        videoArea.addView(browseTools, floating);
-        browseTools.setVisibility(View.GONE);
-
-        shell.addView(videoArea, new LinearLayout.LayoutParams(-1, 0, 1));
-        addBottom();
+        // No app toolbar, dock or floating affordance: the WebView fills
+        // the entire system-bar-safe area. Native Android bars remain visible.
+        shell.addView(browser, new LinearLayout.LayoutParams(-1, 0, 1));
     }
 
-    private void closeBrowseTools() {
-        if (browseToolsOpen) toggleBrowseTools();
-    }
-
-    private void toggleBrowseTools() {
-        if (!"browse".equals(currentTab) || browseTools == null) return;
-        browseToolsOpen = !browseToolsOpen;
-        browseTools.setVisibility(browseToolsOpen ? View.VISIBLE : View.GONE);
-        if (floatingToolsButton != null) {
-            String description = browseToolsOpen ? "Close video tools" : "Open video tools";
-            floatingToolsButton.setContentDescription(description);
-            floatingToolsButton.setTooltipText(description);
-            floatingToolsButton.setSelected(browseToolsOpen);
-            floatingToolsButton.animate().rotation(browseToolsOpen ? 90f : 0f)
-                    .setDuration(150).start();
+    private void cancelLongPress() {
+        if (pendingLongPress != null) {
+            main.removeCallbacks(pendingLongPress);
+            pendingLongPress = null;
         }
     }
 
-    private void addControl(LinearLayout row, String label, int glyph, Runnable run) {
-        IconButtonView button = action(label, glyph, run);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(48), 1);
-        lp.setMargins(dp(4), 0, dp(4), 0);
-        row.addView(button, lp);
+    private void installLongPressGesture() {
+        final int slop = ViewConfiguration.get(this).getScaledTouchSlop();
+        final int timeout = ViewConfiguration.getLongPressTimeout();
+        browser.setOnTouchListener((view, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    cancelLongPress();
+                    longPressActivated = false;
+                    pressStartX = event.getX();
+                    pressStartY = event.getY();
+                    pendingLongPress = () -> {
+                        pendingLongPress = null;
+                        longPressActivated = true;
+                        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                        showContextSheet();
+                    };
+                    main.postDelayed(pendingLongPress, timeout);
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    if (Math.abs(event.getX() - pressStartX) > slop ||
+                            Math.abs(event.getY() - pressStartY) > slop) cancelLongPress();
+                    break;
+                case MotionEvent.ACTION_POINTER_DOWN:
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    cancelLongPress();
+                    break;
+                default: break;
+            }
+            // Normal taps, swipes, scrolling and media playback stay in WebView.
+            return false;
+        });
+        // Consume WebView's native text/URL selection long-click so the app
+        // context sheet, rather than a second system popup, is presented.
+        browser.setOnLongClickListener(view -> {
+            if (!longPressActivated) showContextSheet();
+            cancelLongPress();
+            return true;
+        });
+    }
+
+    private void showContextSheet() {
+        if (isFinishing() || isDestroyed() || (contextSheet != null && contextSheet.isShowing()))
+            return;
+        cancelLongPress();
+        Dialog sheet = new Dialog(this);
+        contextSheet = sheet;
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(20), dp(10), dp(20), dp(24));
+        content.setBackground(rounded(surface, border, 26));
+        content.setMinimumWidth(dp(280));
+
+        View handle = new View(this);
+        handle.setBackground(rounded(secondary, secondary, 3));
+        LinearLayout.LayoutParams handleLayout = new LinearLayout.LayoutParams(dp(34), dp(4));
+        handleLayout.gravity = Gravity.CENTER_HORIZONTAL;
+        handleLayout.bottomMargin = dp(15);
+        content.addView(handle, handleLayout);
+
+        TextView heading = text("GoreeCloud Clips", 21, foreground, true);
+        content.addView(heading);
+        TextView hint = text("Video and app tools", 13, secondary, false);
+        content.addView(hint);
+        gap(content, 14);
+
+        addSheetSection(content, "YOUR SPACE");
+        addSheetItem(content, "Saved library", "Bookmarked videos and favorites", this::renderSaved);
+        addSheetItem(content, "Recent history", "Previously visited video pages", this::renderRecent);
+        addSheetItem(content, "Downloads", "View downloaded and queued files", this::openDownloads);
+        addSheetItem(content, "Settings", "Appearance, privacy and playback", this::renderSettings);
+
+        gap(content, 12);
+        addSheetSection(content, "THIS VIDEO");
+        addSheetItem(content, "Save video", "Add this page to your library", this::saveCurrent);
+        addSheetItem(content, "Download video", "Permissions confirmation required",
+                () -> startOrPrompt(browser.getUrl()));
+        addSheetItem(content, "Share link", "Send to another app", this::shareCurrent);
+        addSheetItem(content, "Copy link", "Copy the current page URL", this::copyCurrent);
+
+        gap(content, 12);
+        addSheetSection(content, "BROWSING");
+        addSheetItem(content, "Home", "Return to TikTok", () -> {
+            browser.loadUrl(HOME);
+            renderBrowse();
+        });
+        addSheetItem(content, "Back", "Previous page", () -> {
+            if (browser.canGoBack()) browser.goBack();
+            else toast("No previous page.");
+        });
+        addSheetItem(content, "Forward", "Next page", () -> {
+            if (browser.canGoForward()) browser.goForward();
+            else toast("No next page.");
+        });
+        addSheetItem(content, "Refresh", "Reload the current page", browser::reload);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(false);
+        scroll.setVerticalScrollBarEnabled(false);
+        scroll.addView(content);
+        scroll.setBackgroundColor(Color.TRANSPARENT);
+        scroll.setContentDescription("GoreeCloud video context menu");
+        int maxHeight = (int) (getResources().getDisplayMetrics().heightPixels * 0.76f);
+        scroll.setLayoutParams(new ViewGroup.LayoutParams(-1, -2));
+        sheet.setContentView(scroll);
+        Window window = sheet.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            window.setDimAmount(0.38f);
+            window.setGravity(Gravity.BOTTOM);
+            window.setLayout(-1, -2);
+        }
+        // Cap the scroll surface, while keeping small screens fully scrollable.
+        scroll.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            if (scroll.getHeight() > maxHeight)
+                scroll.getLayoutParams().height = maxHeight;
+            else return;
+            scroll.requestLayout();
+        });
+        sheet.setOnDismissListener(dialog -> {
+            if (contextSheet == sheet) contextSheet = null;
+        });
+        sheet.show();
+        if (sheet.getWindow() != null)
+            sheet.getWindow().setLayout(-1, -2);
+    }
+
+    private void addSheetSection(LinearLayout content, String title) {
+        TextView heading = text(title, 11, secondary, true);
+        heading.setLetterSpacing(0.12f);
+        heading.setPadding(dp(12), dp(8), dp(12), dp(7));
+        content.addView(heading);
+    }
+
+    private void addSheetItem(LinearLayout container, String title, String summary,
+            Runnable callback) {
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.VERTICAL);
+        item.setGravity(Gravity.CENTER_VERTICAL);
+        item.setPadding(dp(15), dp(8), dp(15), dp(8));
+        item.setMinimumHeight(dp(59));
+        item.setBackground(rounded(dark ? Color.parseColor("#252D3E") :
+                Color.parseColor("#F5F7FB"), surface, 13));
+        item.setContentDescription(title + ". " + summary);
+        item.setFocusable(true);
+        item.setClickable(true);
+        TextView name = text(title, 15, foreground, true);
+        TextView description = text(summary, 12, secondary, false);
+        item.addView(name);
+        item.addView(description);
+        item.setOnClickListener(view -> {
+            if (contextSheet != null) contextSheet.dismiss();
+            callback.run();
+        });
+        container.addView(item, new LinearLayout.LayoutParams(-1, -2));
+        gap(container, 5);
+    }
+
+    private void openDownloads() {
+        try {
+            startActivity(new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS));
+        } catch (Exception e) {
+            toast("Android Downloads is not available on this device.");
+        }
     }
 
     private void saveCurrent() {
@@ -509,7 +589,6 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-        addBottom();
     }
 
     private void displaySavedCards(LinearLayout cards) {
@@ -517,7 +596,7 @@ public final class MainActivity extends Activity {
         List<BookmarkStore.Item> items = LibraryTools.filter(bookmarks.all(), savedQuery);
         if (items.isEmpty()) {
             TextView empty = text(savedQuery.isEmpty()
-                    ? "Nothing saved yet. Open a video and select the bookmark icon."
+                    ? "Nothing saved yet. Press and hold a video, then choose Save video."
                     : "No saved videos match your search.", 15, secondary, false);
             empty.setPadding(dp(14), dp(22), dp(14), dp(22));
             empty.setBackground(rounded(surface, border, 16));
@@ -561,7 +640,6 @@ public final class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         scroll.addView(content);
         shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-        addBottom();
     }
 
     private void displayRecentCards(LinearLayout cards) {
@@ -608,8 +686,22 @@ public final class MainActivity extends Activity {
         return card;
     }
 
-    private void addLibraryAction(LinearLayout controls, String label, int glyph, Runnable run) {
-        IconButtonView button = action(label, glyph, run);
+    private void addLibraryAction(LinearLayout controls, String label, int unusedGlyph,
+            Runnable run) {
+        String word = label.startsWith("Download") ? "Get" :
+                label.startsWith("Unfavorite") ? "Unpin" :
+                label.startsWith("Favorite") ? "Pin" :
+                label.startsWith("Remove") ? "Remove" :
+                label.startsWith("Save") ? "Save" : "Open";
+        TextView button = text(word, 12, foreground, true);
+        button.setGravity(Gravity.CENTER);
+        button.setMinHeight(dp(48));
+        button.setBackground(rounded(dark ? Color.parseColor("#283247") :
+                Color.parseColor("#EEF2F8"), border, 12));
+        button.setContentDescription(label);
+        button.setClickable(true);
+        button.setFocusable(true);
+        button.setOnClickListener(view -> run.run());
         LinearLayout.LayoutParams size = new LinearLayout.LayoutParams(0, dp(48), 1);
         size.setMargins(dp(3), 0, dp(3), 0);
         controls.addView(button, size);
@@ -710,7 +802,6 @@ public final class MainActivity extends Activity {
             }).show()));
         scroll.addView(content);
         shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-        addBottom();
     }
 
     private void promptVideoLink() { promptVideoLink(browser.getUrl()); }
