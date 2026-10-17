@@ -19,8 +19,8 @@ public final class ProfileRegistryProvider extends ContentProvider {
     }
     private String sanitized(String label) {
         if (label == null) return "";
-        String value = label.trim().replaceAll("[\\\\r\\\\n\\\\t]", " ");
-        return value.length() > 32 ? value.substring(0, 32) : value;
+        String value = label.trim().replace((char)13, (char)32).replace((char)10, (char)32).replace((char)9, (char)32);
+        return value.length() > 32 ? value.substring(0, (char)32) : value;
     }
     private boolean exists(int slot) {
         return slot == 0 || (slot > 0 && slot < ProfileRegistry.COUNT &&
