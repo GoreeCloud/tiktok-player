@@ -21,7 +21,7 @@ android {
         debug {
             // GitHub-hosted runners use ephemeral debug signing keys. Keep test installs
             // separate from the owner's existing app to avoid destructive uninstall.
-            applicationIdSuffix '.dev'
+            applicationIdSuffix (project.findProperty('qaSuffix') ?: '.dev')
         }
         release {
             minifyEnabled false

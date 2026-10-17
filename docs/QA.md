@@ -12,6 +12,9 @@
 
 GitHub Actions debug builds are labeled **GoreeCloud Clips Dev** and install as
 `com.goreecloud.clips.dev`, separate from the existing `com.goreecloud.clips` app.
+For side-by-side viewport testing, the Video Player Device QA workflow builds
+`com.goreecloud.clips.videoqa` using `-PqaSuffix=.videoqa`, so the existing
+standard Dev and owner app packages are untouched.
 GitHub runner debug signing keys can change between runs; do not uninstall the
 existing owner app or claim an in-place upgrade has passed. Release signing
 continuity requires its own validated process.
