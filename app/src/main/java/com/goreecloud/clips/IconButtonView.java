@@ -15,7 +15,7 @@ public final class IconButtonView extends View {
     public static final int HOME = 1, BOOKMARK = 2, DOWNLOAD = 3, SHARE = 4,
             EXPLORE = 5, LIBRARY = 6, SETTINGS = 7, OPEN = 8, TRASH = 9,
             SAVE = 10, EXTERNAL = 11, MOON = 12, SUN = 13, CHECK = 14,
-            CLOSE = 15, FORWARD = 16, RETRY = 17;
+            CLOSE = 15, FORWARD = 16, RETRY = 17, MORE = 18;
     private final int glyph;
     private final Paint pen = new Paint(Paint.ANTI_ALIAS_FLAG);
     private int ink;
@@ -144,6 +144,12 @@ public final class IconButtonView extends View {
             case RETRY:
                 canvas.drawArc(new RectF(4, 4, 20, 20), 30, 285, false, pen);
                 poly(canvas, 18, 4, 20, 11, 13, 9); break;
+            case MORE:
+                pen.setStyle(Paint.Style.FILL);
+                circle(canvas, 5, 12, 1.5f);
+                circle(canvas, 12, 12, 1.5f);
+                circle(canvas, 19, 12, 1.5f);
+                break;
             default:
                 circle(canvas, 12, 12, 7);
         }

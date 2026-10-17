@@ -9,6 +9,7 @@ Native Android browser, saved-video organizer, and built-in direct downloader fo
 - WebView browser with TikTok navigation, sharing and local bookmarks.
 - Light theme by default, optional dark theme. The native header and bottom bar respect Android status, navigation, cutout and keyboard insets.
 - Native icon-only actions throughout the app (including navigation, bookmarks, settings, and confirmation dialogs), with accessible spoken labels and tooltips.
+- **Video-first Explore layout:** the video fills the area directly beneath the Android system-bar inset. The title, URL strip and permanent toolbar are removed in Explore. The bottom-bar More icon temporarily reveals Home, Save, Download and Share without reloading the video.
 - **Direct Download** built into the Android app. No downloader website or provider configuration is required.
 - On-device yt-dlp engine attempts to obtain accessible video media after explicit rights confirmation. The app does not transmit user-selected links to a third-party download API for this default path.
 - Finished files are published to Android MediaStore under **Movies / GoreeCloud Clips** on Android 10+. On Android 8–9 they remain in the app-specific Movies folder (not automatically indexed by Gallery).
@@ -19,7 +20,7 @@ Native Android browser, saved-video organizer, and built-in direct downloader fo
 ## Download a video
 
 1. Open a TikTok video or share its URL to GoreeCloud Clips.
-2. Tap **Download**. If the current page is a recognized video URL, the download confirmation opens immediately; otherwise paste a link.
+2. Tap the **More** (three-dot) icon in Explore, then the **Download** glyph. If the current page is a recognized video URL, the download confirmation opens immediately; otherwise paste a link.
 3. Read and acknowledge the creator/copyright warning.
 4. The built-in engine attempts to fetch the video to the device and save it in the video library. No service address needs to be set.
 
