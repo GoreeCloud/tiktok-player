@@ -13,6 +13,11 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Build;
+import android.graphics.Insets;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
+import android.view.WindowManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -26,9 +31,9 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.util.List;
@@ -60,7 +65,23 @@ public final class MainActivity extends Activity {
         applyColors();
         shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
+        shell.setBackgroundColor(background);
+        // Android 15+ enforces edge-to-edge for target SDK 35. Give the content its
+        // own safe inset space instead of allowing the header under the status bar.
+        if (Build.VERSION.SDK_INT >= 30) {
+            getWindow().setDecorFitsSystemWindows(false);
+            shell.setOnApplyWindowInsetsListener((view, insets) -> {
+                Insets bars = insets.getInsets(WindowInsets.Type.systemBars() |
+                        WindowInsets.Type.displayCutout());
+                Insets ime = insets.getInsets(WindowInsets.Type.ime());
+                view.setPadding(bars.left, bars.top, bars.right,
+                        Math.max(bars.bottom, ime.bottom));
+                return WindowInsets.CONSUMED;
+            });
+        }
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         setContentView(shell);
+        if (Build.VERSION.SDK_INT >= 30) shell.requestApplyInsets();
         buildWebView();
         String incoming = incomingUrl(getIntent());
         if (incoming != null) browser.loadUrl(incoming);
@@ -101,10 +122,21 @@ public final class MainActivity extends Activity {
         secondary = Color.parseColor(dark ? "#BAC3D7" : "#667185");
         border = Color.parseColor(dark ? "#374052" : "#E1E5EE");
         accent = Color.parseColor(dark ? "#A5B8FF" : "#3156CB");
-        getWindow().setStatusBarColor(background);
-        getWindow().setNavigationBarColor(background);
-        getWindow().getDecorView().setSystemUiVisibility(dark ? 0 :
-            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        if (Build.VERSION.SDK_INT >= 30) {
+            getWindow().setStatusBarColor(Color.TRANSPARENT);
+            getWindow().setNavigationBarColor(Color.TRANSPARENT);
+            getWindow().setNavigationBarContrastEnforced(false);
+            int flags = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS |
+                    WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+            if (getWindow().getInsetsController() != null)
+                getWindow().getInsetsController().setSystemBarsAppearance(dark ? 0 : flags, flags);
+        } else {
+            getWindow().setStatusBarColor(background);
+            getWindow().setNavigationBarColor(background);
+            getWindow().getDecorView().setSystemUiVisibility(dark ? 0 :
+                    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        }
+        if (shell != null) shell.setBackgroundColor(background);
     }
 
     private GradientDrawable rounded(int fill, int outline, int radius) {
@@ -127,13 +159,48 @@ public final class MainActivity extends Activity {
         return view;
     }
 
-    private TextView action(String label, Runnable run) {
-        TextView b = text(label, 14, foreground, true);
-        b.setBackground(rounded(surface, border, 13));
-        b.setPadding(dp(13), dp(11), dp(13), dp(11));
-        b.setGravity(Gravity.CENTER);
-        b.setOnClickListener(v -> run.run());
-        return b;
+    private IconButtonView action(String label, int glyph, Runnable run) {
+        return new IconButtonView(this, glyph, label, foreground,
+                surface, border, surface, false, run);
+    }
+
+    private View settingsAction(String label, int glyph, Runnable run) {
+        LinearLayout line = row();
+        line.setPadding(dp(5), dp(4), dp(5), dp(4));
+        TextView description = text(label, 14, foreground, false);
+        line.addView(description, new LinearLayout.LayoutParams(0, -2, 1));
+        IconButtonView button = action(label, glyph, run);
+        line.addView(button, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        return line;
+    }
+
+    private final class IconDialogBuilder extends AlertDialog.Builder {
+        IconDialogBuilder() { super(MainActivity.this); }
+
+        @Override public AlertDialog show() {
+            AlertDialog dialog = super.show();
+            decorateDialogButton(dialog.getButton(AlertDialog.BUTTON_NEGATIVE), false);
+            decorateDialogButton(dialog.getButton(AlertDialog.BUTTON_POSITIVE), true);
+            decorateDialogButton(dialog.getButton(AlertDialog.BUTTON_NEUTRAL), false);
+            return dialog;
+        }
+    }
+
+    private void decorateDialogButton(Button button, boolean positive) {
+        if (button == null) return;
+        String original = button.getText().toString();
+        String glyph = positive ? "✓" : "✕";
+        if (original.equalsIgnoreCase("Settings")) glyph = "⚙";
+        if (original.toLowerCase(Locale.ROOT).contains("provider")) glyph = "↻";
+        if (original.equalsIgnoreCase("Delete")) glyph = "⌫";
+        if (original.equalsIgnoreCase("Continue")) glyph = "›";
+        button.setText(glyph);
+        button.setAllCaps(false);
+        button.setTextSize(24);
+        button.setMinWidth(dp(48));
+        button.setMinHeight(dp(48));
+        button.setContentDescription(original);
+        button.setTooltipText(original);
     }
 
     private void gap(LinearLayout container, int height) {
@@ -165,18 +232,20 @@ public final class MainActivity extends Activity {
         LinearLayout bottom = row();
         bottom.setPadding(dp(12), dp(9), dp(12), dp(13));
         bottom.setBackgroundColor(surface);
-        addTab(bottom, "Explore", "browse", this::renderBrowse);
-        addTab(bottom, "Saved", "saved", this::renderSaved);
-        addTab(bottom, "Settings", "settings", this::renderSettings);
+        addTab(bottom, "Explore", IconButtonView.EXPLORE, "browse", this::renderBrowse);
+        addTab(bottom, "Saved", IconButtonView.LIBRARY, "saved", this::renderSaved);
+        addTab(bottom, "Settings", IconButtonView.SETTINGS, "settings", this::renderSettings);
         shell.addView(bottom);
     }
 
-    private void addTab(LinearLayout bar, String label, String tab, Runnable run) {
-        TextView item = text(label, 14, currentTab.equals(tab) ? accent : secondary, currentTab.equals(tab));
-        item.setGravity(Gravity.CENTER);
-        item.setPadding(dp(7), dp(10), dp(7), dp(10));
-        item.setOnClickListener(v -> run.run());
-        bar.addView(item, new LinearLayout.LayoutParams(0, dp(44), 1));
+    private void addTab(LinearLayout bar, String label, int glyph, String tab, Runnable run) {
+        boolean selected = currentTab.equals(tab);
+        int fill = dark ? Color.parseColor("#2A365C") : Color.parseColor("#E7EEFF");
+        IconButtonView item = new IconButtonView(this, glyph, label, selected ? accent : secondary,
+                surface, surface, fill, selected, run);
+        LinearLayout.LayoutParams position = new LinearLayout.LayoutParams(0, dp(48), 1);
+        position.setMargins(dp(4), 0, dp(4), 0);
+        bar.addView(item, position);
     }
 
     private void buildWebView() {
@@ -224,10 +293,10 @@ public final class MainActivity extends Activity {
         reset("TikTok browsing • native library and download tools");
         LinearLayout controls = row();
         controls.setPadding(dp(12), dp(6), dp(12), dp(10));
-        addControl(controls, "⌂", () -> browser.loadUrl(HOME));
-        addControl(controls, "＋ Save", this::saveCurrent);
-        addControl(controls, "↓ Download", () -> startOrPrompt(browser.getUrl()));
-        addControl(controls, "↗ Share", this::shareCurrent);
+        addControl(controls, "Home", IconButtonView.HOME, () -> browser.loadUrl(HOME));
+        addControl(controls, "Save", IconButtonView.BOOKMARK, this::saveCurrent);
+        addControl(controls, "Download", IconButtonView.DOWNLOAD, () -> startOrPrompt(browser.getUrl()));
+        addControl(controls, "Share", IconButtonView.SHARE, this::shareCurrent);
         shell.addView(controls);
         TextView indicator = text(browser.getUrl() == null ? HOME : browser.getUrl(), 11, secondary, false);
         indicator.setTag("current_link");
@@ -241,11 +310,11 @@ public final class MainActivity extends Activity {
         addBottom();
     }
 
-    private void addControl(LinearLayout row, String label, Runnable run) {
-        TextView b = action(label, run);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(42), 1);
-        lp.setMargins(dp(3), 0, dp(3), 0);
-        row.addView(b, lp);
+    private void addControl(LinearLayout row, String label, int glyph, Runnable run) {
+        IconButtonView button = action(label, glyph, run);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(48), 1);
+        lp.setMargins(dp(4), 0, dp(4), 0);
+        row.addView(button, lp);
     }
 
     private void saveCurrent() {
@@ -273,7 +342,7 @@ public final class MainActivity extends Activity {
         content.setPadding(dp(16), dp(8), dp(16), dp(20));
         List<BookmarkStore.Item> items = bookmarks.all();
         if (items.isEmpty()) {
-            TextView help = text("No saved links yet.\n\nBrowse a video and tap + Save. Bookmarks stay on this device until you remove them.", 15, secondary, false);
+            TextView help = text("No saved links yet.\n\nBrowse a video and tap the bookmark icon. Bookmarks stay on this device until you remove them.", 15, secondary, false);
             help.setPadding(dp(18), dp(28), dp(18), dp(28));
             help.setBackground(rounded(surface, border, 17));
             content.addView(help);
@@ -291,11 +360,14 @@ public final class MainActivity extends Activity {
             card.addView(url);
             gap(card, 9);
             LinearLayout controls = row();
-            TextView open = action("Open", () -> { browser.loadUrl(item.url); renderBrowse(); });
-            TextView download = action("Download", () -> startOrPrompt(item.url));
-            TextView remove = action("Remove", () -> { bookmarks.remove(item.url); renderSaved(); });
-            for (TextView button : new TextView[] { open, download, remove }) {
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(43), 1);
+            IconButtonView open = action("Open saved video", IconButtonView.OPEN,
+                    () -> { browser.loadUrl(item.url); renderBrowse(); });
+            IconButtonView download = action("Download saved video", IconButtonView.DOWNLOAD,
+                    () -> startOrPrompt(item.url));
+            IconButtonView remove = action("Remove saved video", IconButtonView.TRASH,
+                    () -> { bookmarks.remove(item.url); renderSaved(); });
+            for (IconButtonView button : new IconButtonView[] { open, download, remove }) {
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(48), 1);
                 lp.setMargins(dp(2), 0, dp(2), 0);
                 controls.addView(button, lp);
             }
@@ -336,7 +408,7 @@ public final class MainActivity extends Activity {
         TextView detail = text("Only needed if a direct download fails and you choose to retry through a trusted processing server. Links are never sent to that server automatically.", 13, secondary, false);
         content.addView(detail);
         gap(content, 13);
-        content.addView(action("Save provider settings", () -> {
+        content.addView(settingsAction("Save provider settings", IconButtonView.SAVE, () -> {
             String value = provider.getText().toString().trim();
             if (!value.isEmpty() && !MediaUrls.isProviderUrl(value)) {
                 toast("Enter a valid public HTTPS URL with no extra path.");
@@ -350,26 +422,22 @@ public final class MainActivity extends Activity {
         gap(content, 8);
         content.addView(text("You can open Cobalt in your browser to paste a link manually. This is not an automatic API integration.", 13, secondary, false));
         gap(content, 9);
-        content.addView(action("Open cobalt.tools", () -> openExternal("https://cobalt.tools/")));
+        content.addView(settingsAction("Open cobalt.tools", IconButtonView.EXTERNAL, () -> openExternal("https://cobalt.tools/")));
         gap(content, 22);
         content.addView(text("Appearance", 19, foreground, true));
-        Switch toggle = new Switch(this);
-        toggle.setText("Dark mode");
-        toggle.setTextColor(foreground);
-        toggle.setChecked(dark);
-        toggle.setOnCheckedChangeListener((v, checked) -> {
-            dark = checked;
-            settings.edit().putBoolean("dark", checked).apply();
+        content.addView(settingsAction(dark ? "Switch to light mode" : "Switch to dark mode",
+                dark ? IconButtonView.SUN : IconButtonView.MOON, () -> {
+            dark = !dark;
+            settings.edit().putBoolean("dark", dark).apply();
             applyColors();
             renderSettings();
-        });
-        content.addView(toggle);
+        }));
         gap(content, 22);
         content.addView(text("Privacy", 19, foreground, true));
         gap(content, 8);
         content.addView(text("Bookmarks are stored on-device. No analytics, account syncing, or invisible video downloads. Website data and cookies are controlled by the embedded browser.", 13, secondary, false));
         gap(content, 18);
-        content.addView(action("Clear saved bookmarks", () -> new AlertDialog.Builder(this)
+        content.addView(settingsAction("Clear saved bookmarks", IconButtonView.TRASH, () -> new IconDialogBuilder()
             .setTitle("Delete bookmarks?")
             .setMessage("This cannot be undone. Downloaded media files will not be deleted.")
             .setNegativeButton("Cancel", null)
@@ -395,7 +463,7 @@ public final class MainActivity extends Activity {
         input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
         input.setText(MediaUrls.isVideoLink(suggested) ? suggested : "");
         input.setHint("https://www.tiktok.com/@creator/video/...");
-        new AlertDialog.Builder(this)
+        new IconDialogBuilder()
             .setTitle("Download video")
             .setMessage("Enter a TikTok video link (a short share link is also accepted).")
             .setView(input)
@@ -411,7 +479,7 @@ public final class MainActivity extends Activity {
     }
 
     private void showRightsWarning(Runnable confirmed) {
-        new AlertDialog.Builder(this)
+        new IconDialogBuilder()
             .setTitle("Copyright and creator permissions")
             .setMessage("Only download videos that you own or are authorized to download. Respect the creator's download settings and applicable laws. Do not remove watermarks or redistribute without permission.\n\nConfirm that you have the necessary rights.")
             .setNegativeButton("Cancel", null)
@@ -438,7 +506,7 @@ public final class MainActivity extends Activity {
                     String message = problem.getMessage() == null
                         ? "The downloader could not access this video."
                         : problem.getMessage();
-                    AlertDialog.Builder dialog = new AlertDialog.Builder(this)
+                    AlertDialog.Builder dialog = new IconDialogBuilder()
                         .setTitle("Direct download unavailable")
                         .setMessage(message)
                         .setNegativeButton("Close", null);
@@ -455,7 +523,7 @@ public final class MainActivity extends Activity {
     private void resolveAndDownload(String videoUrl) {
         String endpoint = settings.getString("provider", "");
         if (!MediaUrls.isProviderUrl(endpoint)) {
-            new AlertDialog.Builder(this)
+            new IconDialogBuilder()
                 .setTitle("Provider not configured")
                 .setMessage("Set a trusted Cobalt-compatible HTTPS instance in Settings, or use the external downloader manually.")
                 .setNegativeButton("Cancel", null)
@@ -468,7 +536,7 @@ public final class MainActivity extends Activity {
                 CobaltClient.Resolved item = CobaltClient.resolve(endpoint, videoUrl);
                 main.post(() -> queueDownload(item.url, item.filename));
             } catch (Exception error) {
-                main.post(() -> new AlertDialog.Builder(this)
+                main.post(() -> new IconDialogBuilder()
                     .setTitle("Download unavailable")
                     .setMessage(error.getMessage() == null ? "The provider could not process this link." : error.getMessage())
                     .setPositiveButton("OK", null).show());

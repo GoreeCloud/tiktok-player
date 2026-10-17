@@ -7,7 +7,8 @@ Native Android browser, saved-video organizer, and built-in direct downloader fo
 ## Working features
 
 - WebView browser with TikTok navigation, sharing and local bookmarks.
-- Light theme by default, optional dark theme.
+- Light theme by default, optional dark theme. The native header and bottom bar respect Android status, navigation, cutout and keyboard insets.
+- Native icon-only actions throughout the app (including navigation, bookmarks, settings, and confirmation dialogs), with accessible spoken labels and tooltips.
 - **Direct Download** built into the Android app. No downloader website or provider configuration is required.
 - On-device yt-dlp engine attempts to obtain accessible video media after explicit rights confirmation. The app does not transmit user-selected links to a third-party download API for this default path.
 - Finished files are published to Android MediaStore under **Movies / GoreeCloud Clips** on Android 10+. On Android 8–9 they remain in the app-specific Movies folder (not automatically indexed by Gallery).

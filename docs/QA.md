@@ -9,7 +9,11 @@
 - Check the exact commit SHA and successful artifact upload.
 
 ## Real-device checks
-- [ ] Launch light UI, verify readable status and navigation bars.
+- [ ] Launch light UI on Android 15/16; title and top controls begin below the status-bar icons/camera cutout, with no overlap.
+- [ ] Verify dark mode and the status/navigation icon contrast on both themes.
+- [ ] Verify app-owned buttons use icons only across Explore, Saved, Settings, and confirm/cancel dialogs; native glyphs have TalkBack labels and tooltips.
+- [ ] Verify touch targets are at least 48 dp, show focus, and bottom navigation stays above the gesture navigation area.
+- [ ] Open keyboard while editing provider URL and confirm the action and navigation are not obscured.
 - [ ] Browse and play an accessible TikTok video.
 - [ ] Tap Download on a video: copyright confirmation appears immediately, with no provider setup.
 - [ ] Download an owner-controlled video using the bundled on-device engine.
