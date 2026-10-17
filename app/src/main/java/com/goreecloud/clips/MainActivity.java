@@ -465,7 +465,7 @@ public final class MainActivity extends Activity {
         });
         sheet.show();
         if (sheet.getWindow() != null)
-            sheet.getWindow().setLayout(menuWidth, WindowManager.LayoutParams.WRAP_CONTENT);
+            sheet.getWindow().setLayout(menuWidth, menuHeight);
     }
 
     private void addSheetSection(LinearLayout content, String title) {
