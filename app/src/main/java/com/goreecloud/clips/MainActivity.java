@@ -346,14 +346,10 @@ public class MainActivity extends Activity {
             }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                NavigationPolicy.Action action = NavigationPolicy.classify(url,
-                        request.isForMainFrame(), request.hasGesture(), request.isRedirect());
-                if (action == NavigationPolicy.Action.IN_WEBVIEW) return false;
-                // Swiping through the feed must not launch app-store / TikTok Lite links.
-                // Only a deliberate, non-redirected off-site gesture may ask for consent.
-                if (action == NavigationPolicy.Action.CONFIRM_EXTERNAL)
-                    confirmExternalLink(url);
-                return true;
+                // An Android WebView "gesture" flag can represent a feed swipe.
+                // Never trust embedded-page navigation to open an external app.
+                return NavigationPolicy.classify(url, request.isForMainFrame())
+                        == NavigationPolicy.Action.BLOCK;
             }
             @Override public void onPageFinished(WebView view, String url) {
                 if (settings.getBoolean("history_enabled", true) && MediaUrls.isVideoLink(url))
@@ -1131,17 +1127,6 @@ public class MainActivity extends Activity {
         } catch (Exception ex) {
             toast("Could not queue download: " + ex.getClass().getSimpleName());
         }
-    }
-
-    private void confirmExternalLink(String url) {
-        String host = Uri.parse(url).getHost();
-        if (host == null) return;
-        new IconDialogBuilder()
-                .setTitle("Open external link?")
-                .setMessage("This link leaves GoreeCloud Clips and may open another app.\n\n" + host)
-                .setNegativeButton("Stay in Clips", null)
-                .setPositiveButton("Open", (dialog, which) -> openExternal(url))
-                .show();
     }
 
     private void openExternal(String url) {
