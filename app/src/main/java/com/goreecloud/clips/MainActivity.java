@@ -62,7 +62,7 @@ public final class MainActivity extends Activity {
         settings = getSharedPreferences(PREFS, MODE_PRIVATE);
         bookmarks = new BookmarkStore(this);
         dark = settings.getBoolean("dark", false);
-        applyColors();
+        background = Color.parseColor(dark ? "#111522" : "#F7F8FB");
         shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
         shell.setBackgroundColor(background);
@@ -81,6 +81,7 @@ public final class MainActivity extends Activity {
         }
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         setContentView(shell);
+        applyColors();
         if (Build.VERSION.SDK_INT >= 30) shell.requestApplyInsets();
         buildWebView();
         String incoming = incomingUrl(getIntent());
