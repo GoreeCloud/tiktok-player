@@ -5,21 +5,21 @@ import java.util.Locale;
 
 /**
  * Main-frame navigation policy for the embedded TikTok player.
- * Untrusted web content must never launch an Android app without an
- * explicit, separate confirmation from the user.
+ * Embedded web content must not launch an Android app. Explicit
+ * native app actions use their own separate outbound-link handler.
  */
 final class NavigationPolicy {
-    enum Action { IN_WEBVIEW, BLOCK, CONFIRM_EXTERNAL }
+    enum Action { IN_WEBVIEW, BLOCK }
 
     private NavigationPolicy() {}
 
-    static Action classify(String url, boolean mainFrame, boolean hasGesture,
-            boolean redirect) {
-        if (!mainFrame) return Action.IN_WEBVIEW;
-        if (MediaUrls.isTikTok(url)) return Action.IN_WEBVIEW;
-        if (!hasGesture || redirect || !MediaUrls.isDownloadUrl(url)
-                || isAppStoreUrl(url)) return Action.BLOCK;
-        return Action.CONFIRM_EXTERNAL;
+    static Action classify(String url, boolean mainFrame) {
+        // A WebView "gesture" also covers vertical feed swipes, so it is not
+        // proof that the user intended to open an external browser/app.
+        // Allow TikTok itself; keep ALL off-site main-frame navigation in Clips.
+        // Only explicit native GoreeCloud controls may open external links.
+        if (!mainFrame || MediaUrls.isTikTok(url)) return Action.IN_WEBVIEW;
+        return Action.BLOCK;
     }
 
     static boolean isAppStoreUrl(String url) {
