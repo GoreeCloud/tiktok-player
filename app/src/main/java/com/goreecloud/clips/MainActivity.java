@@ -345,11 +345,14 @@ public class MainActivity extends Activity {
                 return super.shouldInterceptRequest(view, request);
             }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                if (!request.isForMainFrame()) return false;
                 String url = request.getUrl().toString();
-                if (MediaUrls.isTikTok(url)) return false;
-                if ("https".equalsIgnoreCase(request.getUrl().getScheme()))
-                    openExternal(url);
+                NavigationPolicy.Action action = NavigationPolicy.classify(url,
+                        request.isForMainFrame(), request.hasGesture(), request.isRedirect());
+                if (action == NavigationPolicy.Action.IN_WEBVIEW) return false;
+                // Swiping through the feed must not launch app-store / TikTok Lite links.
+                // Only a deliberate, non-redirected off-site gesture may ask for consent.
+                if (action == NavigationPolicy.Action.CONFIRM_EXTERNAL)
+                    confirmExternalLink(url);
                 return true;
             }
             @Override public void onPageFinished(WebView view, String url) {
@@ -1130,8 +1133,22 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void confirmExternalLink(String url) {
+        String host = Uri.parse(url).getHost();
+        if (host == null) return;
+        new IconDialogBuilder()
+                .setTitle("Open external link?")
+                .setMessage("This link leaves GoreeCloud Clips and may open another app.\n\n" + host)
+                .setNegativeButton("Stay in Clips", null)
+                .setPositiveButton("Open", (dialog, which) -> openExternal(url))
+                .show();
+    }
+
     private void openExternal(String url) {
-        if (!MediaUrls.isDownloadUrl(url)) { toast("Blocked unsafe external link."); return; }
+        if (!MediaUrls.isDownloadUrl(url) || NavigationPolicy.isAppStoreUrl(url)) {
+            toast("Blocked unsafe external link.");
+            return;
+        }
         try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); }
         catch (Exception error) { toast("No browser available."); }
     }
