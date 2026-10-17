@@ -1,6 +1,7 @@
 package com.goreecloud.clips;
 
 import android.app.Activity;
+import java.util.concurrent.atomic.AtomicBoolean;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.ClipData;
@@ -41,6 +42,7 @@ public final class MainActivity extends Activity {
     private static final String HOME = "https://www.tiktok.com/";
     private static final String PREFS = "goreecloud_clips_prefs";
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final AtomicBoolean downloading = new AtomicBoolean(false);
     private final Handler main = new Handler(Looper.getMainLooper());
     private SharedPreferences settings;
     private BookmarkStore bookmarks;
@@ -224,7 +226,7 @@ public final class MainActivity extends Activity {
         controls.setPadding(dp(12), dp(6), dp(12), dp(10));
         addControl(controls, "⌂", () -> browser.loadUrl(HOME));
         addControl(controls, "＋ Save", this::saveCurrent);
-        addControl(controls, "↓ Download", this::promptVideoLink);
+        addControl(controls, "↓ Download", () -> startOrPrompt(browser.getUrl()));
         addControl(controls, "↗ Share", this::shareCurrent);
         shell.addView(controls);
         TextView indicator = text(browser.getUrl() == null ? HOME : browser.getUrl(), 11, secondary, false);
@@ -290,7 +292,7 @@ public final class MainActivity extends Activity {
             gap(card, 9);
             LinearLayout controls = row();
             TextView open = action("Open", () -> { browser.loadUrl(item.url); renderBrowse(); });
-            TextView download = action("Download", () -> promptVideoLink(item.url));
+            TextView download = action("Download", () -> startOrPrompt(item.url));
             TextView remove = action("Remove", () -> { bookmarks.remove(item.url); renderSaved(); });
             for (TextView button : new TextView[] { open, download, remove }) {
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(43), 1);
@@ -308,12 +310,16 @@ public final class MainActivity extends Activity {
 
     private void renderSettings() {
         currentTab = "settings";
-        reset("Your preferences and download provider");
+        reset("Built-in downloads and optional providers");
         ScrollView scroll = new ScrollView(this);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(18), dp(6), dp(18), dp(25));
-        content.addView(text("Downloads", 19, foreground, true));
+        content.addView(text("Direct downloads", 19, foreground, true));
+        gap(content, 8);
+        content.addView(text("Built-in downloader is enabled automatically. Authorized videos download to Movies / GoreeCloud Clips; no third-party service configuration is required.", 13, secondary, false));
+        gap(content, 20);
+        content.addView(text("Optional processing provider", 19, foreground, true));
         gap(content, 10);
         content.addView(text("Cobalt-compatible processing instance (HTTPS)", 14, foreground, true));
         gap(content, 6);
@@ -327,7 +333,7 @@ public final class MainActivity extends Activity {
         provider.setText(settings.getString("provider", ""));
         content.addView(provider);
         gap(content, 7);
-        TextView detail = text("Configure a server you own or have permission to use. A link is sent to that server only after you confirm a download. Leave empty to disable direct provider downloads.", 13, secondary, false);
+        TextView detail = text("Only needed if a direct download fails and you choose to retry through a trusted processing server. Links are never sent to that server automatically.", 13, secondary, false);
         content.addView(detail);
         gap(content, 13);
         content.addView(action("Save provider settings", () -> {
@@ -378,6 +384,11 @@ public final class MainActivity extends Activity {
 
     private void promptVideoLink() { promptVideoLink(browser.getUrl()); }
 
+    private void startOrPrompt(String url) {
+        if (MediaUrls.isVideoLink(url)) showRightsWarning(() -> downloadDirect(url));
+        else promptVideoLink(url);
+    }
+
     private void promptVideoLink(String suggested) {
         EditText input = new EditText(this);
         input.setSingleLine();
@@ -395,7 +406,7 @@ public final class MainActivity extends Activity {
                     toast("Enter a valid TikTok video URL.");
                     return;
                 }
-                showRightsWarning(() -> resolveAndDownload(videoUrl));
+                showRightsWarning(() -> downloadDirect(videoUrl));
             }).show();
     }
 
@@ -405,6 +416,40 @@ public final class MainActivity extends Activity {
             .setMessage("Only download videos that you own or are authorized to download. Respect the creator's download settings and applicable laws. Do not remove watermarks or redistribute without permission.\n\nConfirm that you have the necessary rights.")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("I have permission", (dialog, which) -> confirmed.run()).show();
+    }
+
+    private void downloadDirect(String videoUrl) {
+        if (!downloading.compareAndSet(false, true)) {
+            toast("A video is already downloading.");
+            return;
+        }
+        toast("Downloading directly to your device...");
+        executor.execute(() -> {
+            try {
+                DirectDownloader.SavedFile saved = DirectDownloader.download(
+                    getApplicationContext(), videoUrl, (percent, eta) -> {});
+                main.post(() -> {
+                    downloading.set(false);
+                    toast("Saved " + saved.name + " to your video library.");
+                });
+            } catch (Exception problem) {
+                main.post(() -> {
+                    downloading.set(false);
+                    String message = problem.getMessage() == null
+                        ? "The downloader could not access this video."
+                        : problem.getMessage();
+                    AlertDialog.Builder dialog = new AlertDialog.Builder(this)
+                        .setTitle("Direct download unavailable")
+                        .setMessage(message)
+                        .setNegativeButton("Close", null);
+                    if (MediaUrls.isProviderUrl(settings.getString("provider", ""))) {
+                        dialog.setPositiveButton("Try optional provider",
+                            (d, w) -> resolveAndDownload(videoUrl));
+                    }
+                    dialog.show();
+                });
+            }
+        });
     }
 
     private void resolveAndDownload(String videoUrl) {
