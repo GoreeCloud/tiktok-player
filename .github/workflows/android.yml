@@ -40,3 +40,10 @@ jobs:
           name: goreecloud-clips-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+      - name: Build isolated swipe-redirect device QA APK
+        run: ./gradlew --no-daemon :app:assembleDebug -PqaSuffix=.redirectqa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: goreecloud-clips-redirectqa
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
