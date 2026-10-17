@@ -18,6 +18,12 @@ android {
         }
     }
     buildTypes {
+        debug {
+            // GitHub-hosted runners use ephemeral debug signing keys. Keep test installs
+            // separate from the owner's existing app to avoid destructive uninstall.
+            applicationIdSuffix '.dev'
+            resValue 'string', 'app_name', 'GoreeCloud Clips Dev'
+        }
         release {
             minifyEnabled false
         }

@@ -8,6 +8,14 @@
 - `./gradlew :app:assembleDebug`
 - Check the exact commit SHA and successful artifact upload.
 
+## Development APK install behavior
+
+GitHub Actions debug builds are labeled **GoreeCloud Clips Dev** and install as
+`com.goreecloud.clips.dev`, separate from the existing `com.goreecloud.clips` app.
+GitHub runner debug signing keys can change between runs; do not uninstall the
+existing owner app or claim an in-place upgrade has passed. Release signing
+continuity requires its own validated process.
+
 ## Real-device checks
 - [ ] Launch light UI on Android 15/16; title and top controls begin below the status-bar icons/camera cutout, with no overlap.
 - [ ] Verify dark mode and the status/navigation icon contrast on both themes.
