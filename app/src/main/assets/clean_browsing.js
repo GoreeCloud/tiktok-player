@@ -57,6 +57,25 @@
     });
   }
 
+  // Hide only exact app-launch / coin purchase controls on TikTok pages.
+  function cleanCtaName(value) {
+    return (value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+  function hideAppAndCoinButtons() {
+    document.querySelectorAll('button, a, [role="button"]').forEach(function (button) {
+      if (!button || button.nodeType !== 1) return;
+      var name = cleanCtaName(button.textContent);
+      var aria = cleanCtaName(button.getAttribute('aria-label'));
+      var title = cleanCtaName(button.getAttribute('title'));
+      var match = function (label) {
+        return label === 'open app' || label === 'open in app' ||
+            label === 'get coins';
+      };
+      if (match(aria) || match(title) || (name.length < 90 && match(name)))
+        hide(button);
+    });
+  }
+
   function removeAds() {
     document.querySelectorAll(adSelectors).forEach(hide);
     document.querySelectorAll(adLabelSelectors).forEach(function (label) {
@@ -68,7 +87,7 @@
   var queued = false;
   function refresh() {
     queued = false;
-    try { closeLitePromotions(); removeAds(); } catch (ignored) {}
+    try { closeLitePromotions(); removeAds(); hideAppAndCoinButtons(); } catch (ignored) {}
   }
   function requestRefresh() {
     if (queued) return;
@@ -78,6 +97,6 @@
 
   // TikTok navigates via SPA transitions; a single onPageFinished pass is insufficient.
   var observer = new MutationObserver(requestRefresh);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
   requestRefresh();
 })();
