@@ -25,6 +25,7 @@ public final class IconButtonView extends View {
     private int ink;
     private int activeFill;
     private boolean highlighted;
+    private boolean navigationMode = false;
 
     public IconButtonView(Context context, int glyph, String accessibilityLabel,
             int color, int fill, int outline, int activeFill, boolean highlighted, Runnable action) {
@@ -51,6 +52,23 @@ public final class IconButtonView extends View {
         setMinimumHeight(dip(48));
         setMinimumWidth(dip(48));
         setOnClickListener(v -> action.run());
+    }
+
+    /** Unified pill-dock navigation: outline-free glyphs with a subtle active tint. */
+    public void setNavigationStyle(boolean selected, int activeColor, int idleColor,
+            int selectedFill) {
+        navigationMode = true;
+        highlighted = selected;
+        ink = selected ? activeColor : idleColor;
+        setSelected(selected);
+        GradientDrawable capsule = new GradientDrawable();
+        capsule.setColor(selected ? selectedFill : Color.TRANSPARENT);
+        capsule.setCornerRadius(dip(20));
+        setBackground(new RippleDrawable(
+                ColorStateList.valueOf(activeColor & 0x00FFFFFF | 0x22000000),
+                capsule, null));
+        setElevation(0);
+        invalidate();
     }
 
     /** Premium filled, round floating action surface with elevation and touch ripple. */

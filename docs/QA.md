@@ -27,6 +27,14 @@ continuity requires its own validated process.
 - [ ] Confirm return from Saved/Settings restores expanded video and initially hides actions.
 - [ ] Verify at least 48 dp touch targets and spoken labels in light and dark mode.
 
+## Refined dock and unobstructed controls checks
+
+- [ ] On the OnePlus 1080x2400 screen, prove that the action button bounds begin *below* the TikTok WebView's bottom boundary, leaving TikTok's native Home control uncovered.
+- [ ] Compare the new dock's visual cohesion: one pill housing Explore, Saved, Recent and Settings, separate circular action on the left; no individually stroked tab boxes.
+- [ ] All five icon-only controls have 48dp+ targets, clear content descriptions and selected-tab state in dark/light modes.
+- [ ] Press the dock's left glyph to open the upward menu; Back closes it; opening from Saved/Recent/Settings returns to Explore and expands it.
+- [ ] Video WebView retains safe top inset and does not resize when the context menu opens.
+
 ## Floating tools and clean browsing checks
 
 - [ ] Floating three-dot action appears at the bottom-left above navigation and is 56dp with TalkBack label and modern outline glyph.
