@@ -19,6 +19,14 @@ GitHub runner debug signing keys can change between runs; do not uninstall the
 existing owner app or claim an in-place upgrade has passed. Release signing
 continuity requires its own validated process.
 
+## Context action icons and launcher identity (0.9.0-dev)
+
+- [ ] All twelve context actions display a distinct vector icon to the left of readable text in the same row, in both light and dark modes.
+- [ ] Each action has a minimum 56dp touch target, spoken name and explanation, with the decorative glyph excluded from TalkBack.
+- [ ] The centered menu remains scrollable, dismisses by Back, and the WebView remains full-viewport without an app bar.
+- [ ] The adaptive and round launcher icons display the cyan-to-magenta play mark; Android 13+ themed icons use the monochrome mark.
+- [ ] An isolated `.iconqa` APK installs without overwriting the original package; test launcher icon, long-press, scroll and full menu actions.
+
 ## Compact centered menu (0.8.1-dev)
 
 - [ ] Long-press video: menu opens in the center, never anchored to the bottom.

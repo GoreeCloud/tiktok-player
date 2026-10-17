@@ -16,6 +16,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -30,6 +31,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebChromeClient;
@@ -475,22 +477,66 @@ public final class MainActivity extends Activity {
         content.addView(heading);
     }
 
+    /** DPI-aware native vector actions; each glyph accompanies readable text. */
+    private int contextActionIcon(String title) {
+        switch (title) {
+            case "Saved library": return R.drawable.gc_ic_library;
+            case "Recent history": return R.drawable.gc_ic_history;
+            case "Downloads": return R.drawable.gc_ic_downloads;
+            case "Settings": return R.drawable.gc_ic_settings;
+            case "Save video": return R.drawable.gc_ic_save;
+            case "Download video": return R.drawable.gc_ic_download_video;
+            case "Share link": return R.drawable.gc_ic_share;
+            case "Copy link": return R.drawable.gc_ic_copy;
+            case "Home": return R.drawable.gc_ic_home;
+            case "Back": return R.drawable.gc_ic_back;
+            case "Forward": return R.drawable.gc_ic_forward;
+            case "Refresh": return R.drawable.gc_ic_refresh;
+            default: return R.drawable.gc_ic_settings;
+        }
+    }
+
     private void addSheetItem(LinearLayout container, String title, String summary,
             Runnable callback) {
         LinearLayout item = new LinearLayout(this);
-        item.setOrientation(LinearLayout.VERTICAL);
+        item.setOrientation(LinearLayout.HORIZONTAL);
         item.setGravity(Gravity.CENTER_VERTICAL);
-        item.setPadding(dp(13), dp(7), dp(13), dp(7));
-        item.setMinimumHeight(dp(52));
+        item.setPadding(dp(11), dp(7), dp(11), dp(7));
+        item.setMinimumHeight(dp(56));
         item.setBackground(rounded(dark ? Color.parseColor("#252D3E") :
                 Color.parseColor("#F5F7FB"), surface, 13));
         item.setContentDescription(title + ". " + summary);
         item.setFocusable(true);
         item.setClickable(true);
+
+        FrameLayout iconShell = new FrameLayout(this);
+        GradientDrawable iconPlate = new GradientDrawable();
+        iconPlate.setColor(dark ? Color.parseColor("#334268") :
+                Color.parseColor("#E8EEFF"));
+        iconPlate.setCornerRadius(dp(11));
+        iconShell.setBackground(iconPlate);
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(contextActionIcon(title));
+        icon.setImageTintList(ColorStateList.valueOf(accent));
+        icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        iconShell.addView(icon, new FrameLayout.LayoutParams(
+                dp(22), dp(22), Gravity.CENTER));
+        LinearLayout.LayoutParams iconPosition = new LinearLayout.LayoutParams(
+                dp(38), dp(38));
+        iconPosition.rightMargin = dp(12);
+        item.addView(iconShell, iconPosition);
+
+        LinearLayout labels = new LinearLayout(this);
+        labels.setOrientation(LinearLayout.VERTICAL);
+        labels.setGravity(Gravity.CENTER_VERTICAL);
         TextView name = text(title, 15, foreground, true);
         TextView description = text(summary, 11, secondary, false);
-        item.addView(name);
-        item.addView(description);
+        description.setSingleLine(true);
+        description.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        labels.addView(name);
+        labels.addView(description);
+        item.addView(labels, new LinearLayout.LayoutParams(0, -2, 1));
+
         item.setOnClickListener(view -> {
             if (contextSheet != null) contextSheet.dismiss();
             callback.run();

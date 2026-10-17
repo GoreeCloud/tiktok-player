@@ -6,6 +6,10 @@ Native Android browser, saved-video organizer, and built-in direct downloader fo
 
 ## Working features
 
+- **Official GoreeCloud Clips launcher identity:** native cyan-to-magenta play mark on deep navy, including adaptive, round and monochrome variants for Android 8+.
+- **Icon-and-label long-press actions:** twelve matching scalable vector icons beside titles and summaries, with 56dp accessible touch targets.
+
+
 - WebView browser with TikTok navigation, sharing and local bookmarks.
 - Light theme by default, optional dark theme, and correct Android status/navigation/cutout/keyboard insets.
 - **Full-screen, gesture-driven player:** no GoreeCloud toolbar, bottom navigation, floating button, or persistent control overlay. TikTok's own controls remain unobstructed.
