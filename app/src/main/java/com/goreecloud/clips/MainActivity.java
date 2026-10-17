@@ -32,6 +32,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -52,6 +54,9 @@ public final class MainActivity extends Activity {
     private final Handler main = new Handler(Looper.getMainLooper());
     private SharedPreferences settings;
     private BookmarkStore bookmarks;
+    private HistoryStore recent;
+    private String savedQuery = "";
+    private String recentQuery = "";
     private WebView browser;
     private LinearLayout shell;
     private String currentTab = "browse";
@@ -64,6 +69,8 @@ public final class MainActivity extends Activity {
         super.onCreate(state);
         settings = getSharedPreferences(PREFS, MODE_PRIVATE);
         bookmarks = new BookmarkStore(this);
+        recent = new HistoryStore(this);
+        updateKeepAwake();
         dark = settings.getBoolean("dark", false);
         background = Color.parseColor(dark ? "#111522" : "#F7F8FB");
         shell = new LinearLayout(this);
@@ -118,6 +125,12 @@ public final class MainActivity extends Activity {
         if (browseToolsOpen) { toggleBrowseTools(); return; }
         if (browser.canGoBack()) { browser.goBack(); return; }
         super.onBackPressed();
+    }
+
+    private void updateKeepAwake() {
+        if (settings != null && settings.getBoolean("keep_awake", false))
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     private void applyColors() {
@@ -239,6 +252,7 @@ public final class MainActivity extends Activity {
         bottom.setBackgroundColor(surface);
         addTab(bottom, "Explore", IconButtonView.EXPLORE, "browse", this::renderBrowse);
         addTab(bottom, "Saved", IconButtonView.LIBRARY, "saved", this::renderSaved);
+        addTab(bottom, "Recent", IconButtonView.HISTORY, "recent", this::renderRecent);
         addTab(bottom, "Settings", IconButtonView.SETTINGS, "settings", this::renderSettings);
         if ("browse".equals(currentTab)) {
             boolean expanded = browseToolsOpen;
@@ -288,6 +302,10 @@ public final class MainActivity extends Activity {
                     openExternal(url);
                 return true;
             }
+            @Override public void onPageFinished(WebView view, String url) {
+                if (settings.getBoolean("history_enabled", true) && MediaUrls.isVideoLink(url))
+                    recent.record(view.getTitle(), url);
+            }
         });
         browser.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
             if (!MediaUrls.isDownloadUrl(url)) {
@@ -310,17 +328,33 @@ public final class MainActivity extends Activity {
         if (oldParent != null) oldParent.removeView(browser);
         videoArea.addView(browser, new FrameLayout.LayoutParams(-1, -1));
 
-        browseTools = row();
-        browseTools.setPadding(dp(8), dp(8), dp(8), dp(8));
+        browseTools = new LinearLayout(this);
+        browseTools.setOrientation(LinearLayout.VERTICAL);
+        browseTools.setPadding(dp(8), dp(7), dp(8), dp(7));
         browseTools.setBackground(rounded(surface, border, 16));
-        addControl(browseTools, "Home", IconButtonView.HOME,
+        LinearLayout primaryActions = row();
+        addControl(primaryActions, "Home", IconButtonView.HOME,
                 () -> { closeBrowseTools(); browser.loadUrl(HOME); });
-        addControl(browseTools, "Save", IconButtonView.BOOKMARK,
+        addControl(primaryActions, "Save", IconButtonView.BOOKMARK,
                 () -> { closeBrowseTools(); saveCurrent(); });
-        addControl(browseTools, "Download", IconButtonView.DOWNLOAD,
+        addControl(primaryActions, "Download", IconButtonView.DOWNLOAD,
                 () -> { closeBrowseTools(); startOrPrompt(browser.getUrl()); });
-        addControl(browseTools, "Share", IconButtonView.SHARE,
+        addControl(primaryActions, "Share", IconButtonView.SHARE,
                 () -> { closeBrowseTools(); shareCurrent(); });
+        browseTools.addView(primaryActions);
+        gap(browseTools, 5);
+        LinearLayout navigationActions = row();
+        addControl(navigationActions, "Go back", IconButtonView.BACK,
+                () -> { closeBrowseTools(); if (browser.canGoBack()) browser.goBack();
+                         else toast("No previous page."); });
+        addControl(navigationActions, "Go forward", IconButtonView.FORWARD,
+                () -> { closeBrowseTools(); if (browser.canGoForward()) browser.goForward();
+                         else toast("No next page."); });
+        addControl(navigationActions, "Refresh video page", IconButtonView.RETRY,
+                () -> { closeBrowseTools(); browser.reload(); });
+        addControl(navigationActions, "Copy video link", IconButtonView.COPY,
+                () -> { closeBrowseTools(); copyCurrent(); });
+        browseTools.addView(navigationActions);
         FrameLayout.LayoutParams floating = new FrameLayout.LayoutParams(
                 -1, -2, Gravity.BOTTOM);
         floating.setMargins(dp(10), 0, dp(10), dp(8));
@@ -358,6 +392,15 @@ public final class MainActivity extends Activity {
         toast("Saved to your local library.");
     }
 
+    private void copyCurrent() {
+        String url = browser.getUrl();
+        if (!MediaUrls.isTikTok(url)) { toast("Open a TikTok page first."); return; }
+        ClipboardManager clip = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (clip == null) { toast("Clipboard unavailable."); return; }
+        clip.setPrimaryClip(ClipData.newPlainText("TikTok video URL", url));
+        toast("Link copied.");
+    }
+
     private void shareCurrent() {
         String url = browser.getUrl();
         if (!MediaUrls.isTikTok(url)) { toast("Open a TikTok page first."); return; }
@@ -367,51 +410,158 @@ public final class MainActivity extends Activity {
         startActivity(Intent.createChooser(send, "Share link"));
     }
 
+    private EditText addLibrarySearch(LinearLayout content, String hint, String value,
+            java.util.function.Consumer<String> changed) {
+        EditText search = new EditText(this);
+        search.setSingleLine(true);
+        search.setTextSize(15);
+        search.setTextColor(foreground);
+        search.setHintTextColor(secondary);
+        search.setHint(hint);
+        search.setContentDescription(hint);
+        search.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        search.setBackground(rounded(surface, border, 13));
+        search.setPadding(dp(14), dp(13), dp(14), dp(13));
+        content.addView(search, new LinearLayout.LayoutParams(-1, dp(48)));
+        gap(content, 12);
+        search.setText(value);
+        search.setSelection(search.length());
+        search.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int st, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int st, int before, int count) {
+                changed.accept(s.toString());
+            }
+            @Override public void afterTextChanged(Editable e) { }
+        });
+        return search;
+    }
+
+    private LinearLayout libraryContainer(String subtitle, String title) {
+        reset(subtitle);
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(dp(16), dp(8), dp(16), dp(20));
+        return layout;
+    }
+
     private void renderSaved() {
         currentTab = "saved";
-        reset("Your personal, on-device bookmarks");
-        ScrollView scroller = new ScrollView(this);
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(16), dp(8), dp(16), dp(20));
-        List<BookmarkStore.Item> items = bookmarks.all();
+        LinearLayout content = libraryContainer("Your searchable, on-device library", "Saved");
+        LinearLayout cards = new LinearLayout(this);
+        cards.setOrientation(LinearLayout.VERTICAL);
+        addLibrarySearch(content, "Search titles or links", savedQuery, text -> {
+            savedQuery = text;
+            displaySavedCards(cards);
+        });
+        content.addView(cards);
+        displaySavedCards(cards);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        addBottom();
+    }
+
+    private void displaySavedCards(LinearLayout cards) {
+        cards.removeAllViews();
+        List<BookmarkStore.Item> items = LibraryTools.filter(bookmarks.all(), savedQuery);
         if (items.isEmpty()) {
-            TextView help = text("No saved links yet.\n\nBrowse a video and tap the bookmark icon. Bookmarks stay on this device until you remove them.", 15, secondary, false);
-            help.setPadding(dp(18), dp(28), dp(18), dp(28));
-            help.setBackground(rounded(surface, border, 17));
-            content.addView(help);
+            TextView empty = text(savedQuery.isEmpty()
+                    ? "Nothing saved yet. Open a video and select the bookmark icon."
+                    : "No saved videos match your search.", 15, secondary, false);
+            empty.setPadding(dp(14), dp(22), dp(14), dp(22));
+            empty.setBackground(rounded(surface, border, 16));
+            cards.addView(empty);
+            return;
         }
         for (BookmarkStore.Item item : items) {
-            LinearLayout card = new LinearLayout(this);
-            card.setOrientation(LinearLayout.VERTICAL);
-            card.setPadding(dp(14), dp(14), dp(14), dp(14));
-            card.setBackground(rounded(surface, border, 16));
-            TextView name = text(item.title, 16, foreground, true);
-            name.setMaxLines(2);
-            card.addView(name);
-            TextView url = text(item.url, 12, secondary, false);
-            url.setMaxLines(2);
-            card.addView(url);
-            gap(card, 9);
+            LinearLayout card = videoCard(item);
             LinearLayout controls = row();
-            IconButtonView open = action("Open saved video", IconButtonView.OPEN,
+            addLibraryAction(controls, "Open saved video", IconButtonView.OPEN,
                     () -> { browser.loadUrl(item.url); renderBrowse(); });
-            IconButtonView download = action("Download saved video", IconButtonView.DOWNLOAD,
+            addLibraryAction(controls, "Download saved video", IconButtonView.DOWNLOAD,
                     () -> startOrPrompt(item.url));
-            IconButtonView remove = action("Remove saved video", IconButtonView.TRASH,
-                    () -> { bookmarks.remove(item.url); renderSaved(); });
-            for (IconButtonView button : new IconButtonView[] { open, download, remove }) {
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(48), 1);
-                lp.setMargins(dp(2), 0, dp(2), 0);
-                controls.addView(button, lp);
-            }
+            addLibraryAction(controls, item.favorite ? "Unfavorite video" : "Favorite video",
+                    item.favorite ? IconButtonView.STARRED : IconButtonView.STAR,
+                    () -> { bookmarks.toggleFavorite(item.url); displaySavedCards(cards); });
+            addLibraryAction(controls, "Remove saved video", IconButtonView.TRASH,
+                    () -> { bookmarks.remove(item.url); displaySavedCards(cards); });
             card.addView(controls);
-            content.addView(card);
-            gap(content, 11);
+            cards.addView(card);
+            gap(cards, 11);
         }
-        scroller.addView(content);
-        shell.addView(scroller, new LinearLayout.LayoutParams(-1, 0, 1));
+    }
+
+    private void renderRecent() {
+        currentTab = "recent";
+        LinearLayout content = libraryContainer("Private local viewing history", "Recent");
+        if (!settings.getBoolean("history_enabled", true)) {
+            TextView message = text("Recent history is off. Enable it in Settings to remember visited video pages locally.", 15, secondary, false);
+            content.addView(message);
+        } else {
+            LinearLayout cards = new LinearLayout(this);
+            cards.setOrientation(LinearLayout.VERTICAL);
+            addLibrarySearch(content, "Search recent videos", recentQuery, text -> {
+                recentQuery = text;
+                displayRecentCards(cards);
+            });
+            content.addView(cards);
+            displayRecentCards(cards);
+        }
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(content);
+        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
         addBottom();
+    }
+
+    private void displayRecentCards(LinearLayout cards) {
+        cards.removeAllViews();
+        List<BookmarkStore.Item> items = LibraryTools.filter(recent.all(), recentQuery);
+        if (items.isEmpty()) {
+            TextView message = text(recentQuery.isEmpty()
+                    ? "No recent video pages yet."
+                    : "No recent videos match your search.", 15, secondary, false);
+            message.setPadding(dp(14), dp(20), dp(14), dp(20));
+            cards.addView(message);
+            return;
+        }
+        for (BookmarkStore.Item item : items) {
+            LinearLayout card = videoCard(item);
+            LinearLayout controls = row();
+            addLibraryAction(controls, "Open recent video", IconButtonView.OPEN,
+                    () -> { browser.loadUrl(item.url); renderBrowse(); });
+            addLibraryAction(controls, "Download recent video", IconButtonView.DOWNLOAD,
+                    () -> startOrPrompt(item.url));
+            addLibraryAction(controls, "Save recent video", IconButtonView.BOOKMARK,
+                    () -> { bookmarks.save(item.title, item.url); toast("Added to Saved."); });
+            addLibraryAction(controls, "Remove from recent", IconButtonView.TRASH,
+                    () -> { recent.remove(item.url); displayRecentCards(cards); });
+            card.addView(controls);
+            cards.addView(card);
+            gap(cards, 11);
+        }
+    }
+
+    private LinearLayout videoCard(BookmarkStore.Item item) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(14), dp(14), dp(12));
+        card.setBackground(rounded(surface, border, 16));
+        TextView title = text((item.favorite ? "★ " : "") + item.title, 16, foreground, true);
+        title.setMaxLines(2);
+        card.addView(title);
+        TextView url = text(item.url, 12, secondary, false);
+        url.setMaxLines(2);
+        url.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        card.addView(url);
+        gap(card, 9);
+        return card;
+    }
+
+    private void addLibraryAction(LinearLayout controls, String label, int glyph, Runnable run) {
+        IconButtonView button = action(label, glyph, run);
+        LinearLayout.LayoutParams size = new LinearLayout.LayoutParams(0, dp(48), 1);
+        size.setMargins(dp(3), 0, dp(3), 0);
+        controls.addView(button, size);
     }
 
     private void renderSettings() {
@@ -467,16 +617,44 @@ public final class MainActivity extends Activity {
             renderSettings();
         }));
         gap(content, 22);
+        content.addView(text("Playback", 19, foreground, true));
+        gap(content, 8);
+        content.addView(settingsAction(settings.getBoolean("keep_awake", false)
+                ? "Allow the screen to dim" : "Keep screen awake while watching",
+                IconButtonView.AWAKE, () -> {
+            boolean enabled = !settings.getBoolean("keep_awake", false);
+            settings.edit().putBoolean("keep_awake", enabled).apply();
+            updateKeepAwake();
+            renderSettings();
+        }));
+        gap(content, 22);
         content.addView(text("Privacy", 19, foreground, true));
         gap(content, 8);
-        content.addView(text("Bookmarks are stored on-device. No analytics, account syncing, or invisible video downloads. Website data and cookies are controlled by the embedded browser.", 13, secondary, false));
+        content.addView(text("Saved videos and optional recent history stay on this device. No analytics, account syncing, or invisible video downloads. Website cookies remain in the embedded browser.", 13, secondary, false));
+        gap(content, 10);
+        content.addView(settingsAction(settings.getBoolean("history_enabled", true)
+                ? "Turn off recent history" : "Turn on local recent history",
+                IconButtonView.HISTORY, () -> {
+            boolean enabled = !settings.getBoolean("history_enabled", true);
+            settings.edit().putBoolean("history_enabled", enabled).apply();
+            renderSettings();
+        }));
+        content.addView(settingsAction("Clear recent history", IconButtonView.TRASH,
+                () -> new IconDialogBuilder()
+                    .setTitle("Clear recent video history?")
+                    .setMessage("This removes locally stored recent links, not saved bookmarks.")
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Delete", (dialog, which) -> {
+                        recent.clear();
+                        toast("Recent history cleared.");
+                    }).show()));
         gap(content, 18);
         content.addView(settingsAction("Clear saved bookmarks", IconButtonView.TRASH, () -> new IconDialogBuilder()
             .setTitle("Delete bookmarks?")
             .setMessage("This cannot be undone. Downloaded media files will not be deleted.")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Delete", (d, which) -> {
-                for (BookmarkStore.Item item : bookmarks.all()) bookmarks.remove(item.url);
+                bookmarks.clear();
                 toast("Bookmarks deleted.");
             }).show()));
         scroll.addView(content);

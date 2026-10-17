@@ -9,7 +9,11 @@ Native Android browser, saved-video organizer, and built-in direct downloader fo
 - WebView browser with TikTok navigation, sharing and local bookmarks.
 - Light theme by default, optional dark theme. The native header and bottom bar respect Android status, navigation, cutout and keyboard insets.
 - Native icon-only actions throughout the app (including navigation, bookmarks, settings, and confirmation dialogs), with accessible spoken labels and tooltips.
-- **Video-first Explore layout:** the video fills the area directly beneath the Android system-bar inset. The title, URL strip and permanent toolbar are removed in Explore. The bottom-bar More icon temporarily reveals Home, Save, Download and Share without reloading the video.
+- **Video-first Explore layout:** the video fills the area directly beneath the Android system-bar inset. The title, URL strip and permanent toolbar are removed in Explore. The bottom-bar More icon temporarily reveals actions without reloading the video.
+- **Expanded browser tools:** More opens Home, Save, Download, Share, Back, Forward, Refresh and Copy Link as accessible glyph controls.
+- **Searchable Saved library:** filter by title, creator or URL, and favorite important videos to keep them first.
+- **Private Recent history:** on-device, capped at 150 video URLs, searchable with Save/Download/Open actions; optional history recording can be disabled or cleared in Settings.
+- **Playback preference:** opt in to keep the screen awake while watching, with an icon-only toggle in Settings.
 - **Direct Download** built into the Android app. No downloader website or provider configuration is required.
 - On-device yt-dlp engine attempts to obtain accessible video media after explicit rights confirmation. The app does not transmit user-selected links to a third-party download API for this default path.
 - Finished files are published to Android MediaStore under **Movies / GoreeCloud Clips** on Android 10+. On Android 8–9 they remain in the app-specific Movies folder (not automatically indexed by Gallery).

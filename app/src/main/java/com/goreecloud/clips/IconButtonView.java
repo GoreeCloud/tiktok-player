@@ -15,7 +15,9 @@ public final class IconButtonView extends View {
     public static final int HOME = 1, BOOKMARK = 2, DOWNLOAD = 3, SHARE = 4,
             EXPLORE = 5, LIBRARY = 6, SETTINGS = 7, OPEN = 8, TRASH = 9,
             SAVE = 10, EXTERNAL = 11, MOON = 12, SUN = 13, CHECK = 14,
-            CLOSE = 15, FORWARD = 16, RETRY = 17, MORE = 18;
+            CLOSE = 15, FORWARD = 16, RETRY = 17, MORE = 18,
+            HISTORY = 19, BACK = 20, COPY = 21, STAR = 22, STARRED = 23,
+            AWAKE = 24;
     private final int glyph;
     private final Paint pen = new Paint(Paint.ANTI_ALIAS_FLAG);
     private int ink;
@@ -149,6 +151,40 @@ public final class IconButtonView extends View {
                 circle(canvas, 5, 12, 1.5f);
                 circle(canvas, 12, 12, 1.5f);
                 circle(canvas, 19, 12, 1.5f);
+                break;
+            case HISTORY:
+                canvas.drawArc(new RectF(3, 3, 21, 21), -70, 300, false, pen);
+                line(canvas, 12, 7, 12, 12);
+                line(canvas, 12, 12, 16, 15);
+                poly(canvas, 3, 5, 3, 10, 8, 10);
+                break;
+            case BACK:
+                poly(canvas, 16, 4, 8, 12, 16, 20);
+                break;
+            case COPY:
+                canvas.drawRoundRect(new RectF(7, 6, 20, 21), 2, 2, pen);
+                poly(canvas, 4, 17, 4, 3, 16, 3);
+                break;
+            case STAR:
+            case STARRED:
+                Path star = new Path();
+                for (int i=0;i<10;i++) {
+                    double angle=-Math.PI/2+i*Math.PI/5;
+                    float rad=i%2==0?10:4.4f;
+                    float x=12+(float)Math.cos(angle)*rad;
+                    float y=12+(float)Math.sin(angle)*rad;
+                    if(i==0) star.moveTo(x,y); else star.lineTo(x,y);
+                }
+                star.close();
+                if(glyph==STARRED) pen.setStyle(Paint.Style.FILL);
+                canvas.drawPath(star, pen);
+                break;
+            case AWAKE:
+                circle(canvas, 12, 12, 4);
+                line(canvas, 12, 2, 12, 5);
+                line(canvas, 12, 19, 12, 22);
+                line(canvas, 2, 12, 5, 12);
+                line(canvas, 19, 12, 22, 12);
                 break;
             default:
                 circle(canvas, 12, 12, 7);
