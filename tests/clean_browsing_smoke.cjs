@@ -15,6 +15,8 @@ function fake(text, parent) {
   };
 }
 const lite = fake('Try TikTok Lite — install to watch more');
+const upsell = fake('Get the full app experience. Open TikTok. Not now');
+const signin = fake('Log in to TikTok. Continue with Google');
 const sponsored = fake('Paid placement');
 const label = fake('Sponsored');
 label.closest = () => sponsored;
@@ -23,7 +25,7 @@ const body = {};
 const doc = {
   body, documentElement: {},
   querySelectorAll(sel) {
-    if (sel.includes('[role="dialog"]')) return [lite];
+    if (sel.includes('[role="dialog"]')) return [lite, upsell, signin];
     if (sel.includes('[data-e2e="ad-card"]')) return [ordinary];
     if (sel.includes('[data-e2e="sponsored-label"]')) return [label];
     return [];
@@ -43,6 +45,8 @@ const context = {
 };
 vm.runInNewContext(script, context);
 assert.ok(lite.isHidden(), 'TikTok Lite promo should be hidden');
+assert.ok(upsell.isHidden(), 'Identifiable full-app popup should be hidden');
+assert.ok(!signin.isHidden(), 'Normal login dialog must remain visible');
 assert.ok(sponsored.isHidden(), 'sponsored card should be hidden');
 assert.ok(ordinary.isHidden(), 'explicit ad slot should be hidden');
 assert.strictEqual(observed, 1);
