@@ -1,7 +1,7 @@
 name: Android CI
 on:
   push:
-    branches: [main, 'feature/**']
+    branches: [main, 'feature/**', 'fix/**']
   pull_request:
   workflow_dispatch:
 permissions:
@@ -46,4 +46,16 @@ jobs:
         with:
           name: goreecloud-clips-redirectqa
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+      - name: Build non-destructive gesture verification and instrumented test APKs
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest -PqaSuffix=.gestureverify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: goreecloud-clips-gestureverify
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: goreecloud-clips-gestureverify-instrumentation
+          path: app/build/outputs/apk/androidTest/debug/*.apk
           if-no-files-found: error

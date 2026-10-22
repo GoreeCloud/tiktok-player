@@ -38,7 +38,10 @@
   function closeLitePromotions() {
     document.querySelectorAll(dialogs).forEach(function (dialog) {
       var copy = (dialog.textContent || '').slice(0, 3000);
-      if (!/tiktok[\s\u00a0-]*lite/i.test(copy)) return;
+      var liteOffer = /tiktok[\s\u00a0-]*lite/i.test(copy);
+      var fullAppOffer = /get the full app experience/i.test(copy) &&
+          /open[\s\u00a0-]*tiktok/i.test(copy);
+      if (!liteOffer && !fullAppOffer) return;
       // Never remove the document, video feed, or generic page-level wrapper.
       var target = dialog;
       var parent = dialog.parentElement;
@@ -69,7 +72,7 @@
       var title = cleanCtaName(button.getAttribute('title'));
       var match = function (label) {
         return label === 'open app' || label === 'open in app' ||
-            label === 'get coins';
+            label === 'open tiktok' || label === 'get coins';
       };
       if (match(aria) || match(title) || (name.length < 90 && match(name)))
         hide(button);

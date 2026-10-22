@@ -40,6 +40,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.WebResourceResponse;
+import android.webkit.WebResourceError;
+import android.graphics.Bitmap;
 import java.io.InputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -75,8 +77,9 @@ public class MainActivity extends Activity {
     private String currentTab = "browse";
     private Dialog contextSheet;
     private Runnable pendingLongPress;
-    private float pressStartX, pressStartY;
-    private boolean longPressActivated;
+    private float pressStartX, pressStartY, secondPressStartX, secondPressStartY;
+    private AlertDialog profileRecoveryDialog;
+    private String activeMainFrameUrl;
     private int activeProfileSlot;
     private static boolean webViewSuffixConfigured;
     private String cleanWebScript = "";
@@ -150,9 +153,9 @@ public class MainActivity extends Activity {
         if (incoming != null) browser.loadUrl(incoming);
         else browser.loadUrl(HOME);
         renderBrowse();
-        if (!settings.getBoolean("gesture_discovered", false)) {
-            settings.edit().putBoolean("gesture_discovered", true).apply();
-            browser.postDelayed(() -> toast("Press and hold a video to open GoreeCloud tools."), 950);
+        if (!settings.getBoolean("two_finger_tools_discovered", false)) {
+            settings.edit().putBoolean("two_finger_tools_discovered", true).apply();
+            browser.postDelayed(() -> toast("Touch and hold with two fingers to open GoreeCloud tools."), 950);
         }
     }
 
@@ -173,6 +176,10 @@ public class MainActivity extends Activity {
             contextSheet = null;
         }
         executor.shutdownNow();
+        if (profileRecoveryDialog != null) {
+            profileRecoveryDialog.dismiss();
+            profileRecoveryDialog = null;
+        }
         if (browser != null) {
             ViewGroup parent = (ViewGroup) browser.getParent();
             if (parent != null) parent.removeView(browser);
@@ -351,6 +358,28 @@ public class MainActivity extends Activity {
                 return NavigationPolicy.classify(url, request.isForMainFrame())
                         == NavigationPolicy.Action.BLOCK;
             }
+            @Override public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                activeMainFrameUrl = url;
+                if (profileRecoveryDialog != null) {
+                    profileRecoveryDialog.dismiss();
+                    profileRecoveryDialog = null;
+                }
+                super.onPageStarted(view, url, favicon);
+            }
+            @Override public void onReceivedError(WebView view, WebResourceRequest request,
+                    WebResourceError error) {
+                if (!request.isForMainFrame()) return;
+                String path = request.getUrl().getPath();
+                if (!MediaUrls.isTikTok(request.getUrl().toString()) || path == null ||
+                        !(path.equals("/profile") || path.startsWith("/profile/"))) return;
+                String failedUrl = request.getUrl().toString();
+                view.post(() -> {
+                    if (browser != view || isFinishing() || isDestroyed()) return;
+                    if (!"browse".equals(currentTab) ||
+                            !failedUrl.equals(activeMainFrameUrl)) return;
+                    showProfileRecovery(failedUrl);
+                });
+            }
             @Override public void onPageFinished(WebView view, String url) {
                 if (settings.getBoolean("history_enabled", true) && MediaUrls.isVideoLink(url))
                     recent.record(view.getTitle(), url);
@@ -387,43 +416,72 @@ public class MainActivity extends Activity {
 
     private void installLongPressGesture() {
         final int slop = ViewConfiguration.get(this).getScaledTouchSlop();
-        final int timeout = ViewConfiguration.getLongPressTimeout();
+        final int timeout = Math.max(ViewConfiguration.getLongPressTimeout(), 650);
         browser.setOnTouchListener((view, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
+                    // One finger belongs to WebView text selection and editing.
                     cancelLongPress();
-                    longPressActivated = false;
-                    pressStartX = event.getX();
-                    pressStartY = event.getY();
+                    break;
+                case MotionEvent.ACTION_POINTER_DOWN:
+                    cancelLongPress();
+                    if (event.getPointerCount() != 2) break;
+                    pressStartX = event.getX(0);
+                    pressStartY = event.getY(0);
+                    secondPressStartX = event.getX(1);
+                    secondPressStartY = event.getY(1);
                     pendingLongPress = () -> {
                         pendingLongPress = null;
-                        longPressActivated = true;
                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
                         showContextSheet();
                     };
                     main.postDelayed(pendingLongPress, timeout);
                     break;
                 case MotionEvent.ACTION_MOVE:
-                    if (Math.abs(event.getX() - pressStartX) > slop ||
-                            Math.abs(event.getY() - pressStartY) > slop) cancelLongPress();
+                    if (pendingLongPress != null &&
+                            (event.getPointerCount() != 2 ||
+                            Math.abs(event.getX(0) - pressStartX) > slop ||
+                            Math.abs(event.getY(0) - pressStartY) > slop ||
+                            Math.abs(event.getX(1) - secondPressStartX) > slop ||
+                            Math.abs(event.getY(1) - secondPressStartY) > slop))
+                        cancelLongPress();
                     break;
-                case MotionEvent.ACTION_POINTER_DOWN:
+                case MotionEvent.ACTION_POINTER_UP:
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
                     cancelLongPress();
                     break;
                 default: break;
             }
-            // Normal taps, swipes, scrolling and media playback stay in WebView.
+            // Never consume a WebView text selection, paste or drag event.
             return false;
         });
-        // Consume WebView's native text/URL selection long-click so the app
-        // context sheet, rather than a second system popup, is presented.
-        browser.setOnLongClickListener(view -> {
-            if (!longPressActivated) showContextSheet();
-            cancelLongPress();
-            return true;
+    }
+
+    private void showProfileRecovery(String failedUrl) {
+        if (profileRecoveryDialog != null || isFinishing() || isDestroyed() ||
+                browser == null || !"browse".equals(currentTab) ||
+                !failedUrl.equals(activeMainFrameUrl)) return;
+        AlertDialog dialog = new IconDialogBuilder()
+                .setTitle("TikTok profile couldn't load")
+                .setMessage("TikTok may have signed you in, but the profile page had a network " +
+                        "error. Retry the page or return to browsing. Your saved Clips data " +
+                        "was not changed.")
+                .setNegativeButton("Home", (unused, which) -> browser.loadUrl(HOME))
+                .setNeutralButton("Back", (unused, which) -> {
+                    if (browser.canGoBack()) browser.goBack();
+                    else browser.loadUrl(HOME);
+                })
+                .setPositiveButton("Retry", (unused, which) -> browser.loadUrl(failedUrl))
+                .create();
+        profileRecoveryDialog = dialog;
+        dialog.setOnDismissListener(unused -> {
+            if (profileRecoveryDialog == dialog) profileRecoveryDialog = null;
         });
+        dialog.show();
+        decorateDialogButton(dialog.getButton(AlertDialog.BUTTON_NEGATIVE), false);
+        decorateDialogButton(dialog.getButton(AlertDialog.BUTTON_NEUTRAL), false);
+        decorateDialogButton(dialog.getButton(AlertDialog.BUTTON_POSITIVE), true);
     }
 
     private void showContextSheet() {

@@ -17,7 +17,7 @@ function environment(hostname) {
   const controls = [
     element('Open App'), element('  Get   coins '),
     element('', {'aria-label':'OPEN APP'}), element('', { title:'Get Coins' }),
-    element('Open in app'), element('Open App settings'),
+    element('Open in app'), element('Open TikTok'), element('Open App settings'),
     element('How to get coins'), element('Normal creator video')
   ];
   let callback, observed = 0;
@@ -42,8 +42,8 @@ function environment(hostname) {
   return { controls, ctx, trigger() { if (callback) callback(); }, observed() {return observed;} };
 }
 const tiktok = environment('www.tiktok.com');
-for (let i=0; i<5; i++) assert.ok(tiktok.controls[i].isHidden(), 'Missing CTA '+i);
-for (let i=5; i<tiktok.controls.length; i++)
+for (let i=0; i<6; i++) assert.ok(tiktok.controls[i].isHidden(), 'Missing CTA '+i);
+for (let i=6; i<tiktok.controls.length; i++)
   assert.ok(!tiktok.controls[i].isHidden(), 'Unrelated control hidden '+i);
 tiktok.controls.push(element('Get coins'));
 tiktok.trigger();
