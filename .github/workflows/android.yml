@@ -47,10 +47,15 @@ jobs:
           name: goreecloud-clips-redirectqa
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-      - name: Build isolated text-selection QA APK
-        run: ./gradlew --no-daemon :app:assembleDebug -PqaSuffix=.gestureqa
+      - name: Build isolated text-selection QA and instrumented test APKs
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest -PqaSuffix=.gestureqa
       - uses: actions/upload-artifact@v4
         with:
           name: goreecloud-clips-gestureqa
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: goreecloud-clips-gestureqa-instrumentation
+          path: app/build/outputs/apk/androidTest/debug/*.apk
           if-no-files-found: error
