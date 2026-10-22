@@ -34,7 +34,8 @@
 - [ ] Stationary two-finger hold opens the Clips menu; pinches and swipes do not.
 - [ ] Failed TikTok profile main-frame load offers Retry, Back and Home without clearing login sessions.
 - [ ] Subresource or unrelated page errors do not open the recovery dialog.
-- [ ] Confirm session retention, profile isolation, and TikTok Lite redirect regression on isolated gestureqa build.
+- [ ] Confirm session retention, profile isolation, and TikTok Lite redirect regression on isolated gesture QA builds.
+- [ ] Run Android instrumentation on a fresh `.gestureverify` package (two stationary pointers, cancellation on movement, profile error dialog), preserving existing `.gestureqa` installations when debug signing certificates differ.
 
 ## Automated checks
 - `./gradlew :app:testDebugUnitTest`
